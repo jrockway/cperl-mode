@@ -1154,14 +1154,18 @@
 ;;;;    class
 ;;;;    has
 ;;;;    say
-;;;;    returns
-;;;;    multi sub, multi submethod
+;;;;    returns, of
+;;;;    multi sub, multi submethod, method,
 ;;;;    given, when, default
 ;;;;    gather, take
 ;;;;    try
 ;;;;    err
 ;;;;    zip, uniq, reduce, sum, max, min, kv, pairs, type, pick
-;;;;    Int, Num, Real, Str, Bit, Ref, Scalar, Array, Hash, Rule, Code
+;;;;    bit" "int" "str" "num" "ref" "bool" "Bit" "Int" "Str" "Num" "Ref"
+;;;;    Bool" "Array" "Hash" "IO" "Code" "Routine" "Sub" "Method" "Submethod"
+;;;;    Macro" "Rule" "Block" "Bare" "Parametric" "Package" "Module" "Class"
+;;;;    Object" "Grammar" "List" "Lazy" "Eager" 
+;;;;    Real" "Scalar" "int8" "Socket"
 ;;;;
 ;;;;  Indentation:
 ;;;;    recognize sub traits (returns Type, is rw, etc.)
@@ -1180,6 +1184,10 @@
 ;;;;
 ;;;;  Now only the @ and % sigils match arrays and hashes,
 ;;;;  not the bracket or brace after it. 
+;;;;
+;;;;  No longer mark sub prototypes as string, just use ordinary highlighting.
+;;;;
+;;;;  Highlight variable names with [.:^] after sigils (@.name, $:name, ...)
 ;;;;
 
 ;;; Code:
@@ -4946,19 +4954,19 @@ the sections using `cperl6-pod-head-face', `cperl6-pod-face',
 		  (if (> (point) max)
 		      (setq tmpend tb))))
 	       ((match-beginning 13)	; sub with prototypes
-		;; ss5: todo: 1. rausnehmen; 2. durch $%@-highlighting ersetzen HIER WEITER
-		(setq b (match-beginning 0))
-		(if (memq (char-after (1- b))
-			  '(?\$ ?\@ ?\% ?\& ?\*))
-		    nil
-		  (setq state (parse-partial-sexp
-			       state-point b nil nil state)
-			state-point b)
-		  (if (or (nth 3 state) (nth 4 state))
-		      nil
-		    ;; Mark as string
-		    (cperl6-commentify (match-beginning 13) (match-end 13) t))
-		  (goto-char (match-end 0)))
+; ss5: obsolete, we now use just ordinary highlighting in sub param declaration
+;		(setq b (match-beginning 0))
+;		(if (memq (char-after (1- b))
+;			  '(?\$ ?\@ ?\% ?\& ?\*))
+;		    nil
+;		  (setq state (parse-partial-sexp
+;			       state-point b nil nil state)
+;			state-point b)
+;		  (if (or (nth 3 state) (nth 4 state))
+;		      nil
+;		    ;; Mark as string
+;		    (cperl6-commentify (match-beginning 13) (match-end 13) t))
+;		  (goto-char (match-end 0)))
 		)
 	       ;; 1+6+2+1+1+2=13 extra () before this:
 	       ;;    "\\$\\(['{]\\)"
@@ -5136,7 +5144,7 @@ the sections using `cperl6-pod-head-face', `cperl6-pod-face',
 		  ;; Check whether it is m// which means "previous match"
 		  ;; and highlight differently
 		  (setq is-REx
-			;;(and (string-match "^\\([sm]?\\|qr\\|rx\\)$" argument)     ; ss5: rx
+			;;(and (string-match "^\\([sm]?\\|qr\\|rx\\)$" argument)      ; ss5: rx
 			(and (string-match "^\\([sm]?\\|rx\\)$" argument)             ; ss5
 			     (or (not (= (length argument) 0))
 				 (not (eq c ?\<)))))
@@ -6029,8 +6037,8 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	       'identity
 	       '("if" "until" "while" "elsif" "else" "unless" "for" "loop"
 		 "foreach" "continue" "exit" "die" "last" "goto" "given" "when" "default" "has" "next"
-		 "redo" "return" "returns" "local" "exec"
-		 "\\(multi[ \t]+\\)?sub\\(method\\)?" "do" "dump" "use"
+		 "redo" "return" "returns" "of" "is" "local" "exec"
+		 "\\(multi[ \t]+\\)?\\(sub\\)?\\(method\\)?" "do" "dump" "use"
 		 "require" "package" "class" "eval" "try" "my"
 		 "BEGIN" "END" "CHECK" "INIT" "FIRST" "ENTER" "LEAVE" "KEEP"
 		 "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL")
@@ -6109,9 +6117,17 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    (list
 	     (concat
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
-	      ;; the builtin types
-	      ;; Int, Num, Real, Str, Bit, Ref, Scalar, Array, Hash, Rule, Code
-	      "Int\\|Num\\|Real\\|Str\\|Bit\\|Ref\\|Scalar\\|Array\\|Hash\\|Rule\\|Code"
+	      ;; the builtin types:
+	      ;; bit" "int" "str" "num" "ref" "bool" "Bit" "Int" "Str" "Num" "Ref"
+	      ;; Bool" "Array" "Hash" "IO" "Code" "Routine" "Sub" "Method" "Submethod"
+	      ;; Macro" "Rule" "Block" "Bare" "Parametric" "Package" "Module" "Class"
+	      ;; Object" "Grammar" "List" "Lazy" "Eager" 
+	      ;; Real" "Scalar" "int8" "Socket"
+	      "bit\\|int\\|str\\|num\\|ref\\|bool\\|Bit\\|Int\\|Str\\|Num\\|Ref\\|"
+	      "Bool\\|Array\\|Hash\\|IO\\|Code\\|Routine\\|Sub\\|Method\\|Submethod\\|"
+	      "Macro\\|Rule\\|Block\\|Bare\\|Parametric\\|Package\\|Module\\|Class\\|"
+	      "Object\\|Grammar\\|List\\|Lazy\\|Eager\\|"
+	      "Real\\|Scalar\\|int8\\|Socket"
 	      "\\)\\>") 2 'font-lock-type-face)
 	    ;; In what follows we use `other' style
 	    ;; for nonoverwritable builtins
@@ -6145,7 +6161,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    ;;			   "\\|")
 	    '("-[rwxoRWXOezsfdlpSbctugkTBMAC]\\>\\([ \t]+_\\>\\)?" 0
 	      font-lock-function-name-face keep) ; Not very good, triggers at "[a-z]"
-	    '("\\<\\(multi[ \t]+\\)?sub\\(method\\)?[ \t]+\\([^ \t{;()]+\\)[ \t]*\\(([^()]*)[ \t]*\\(returns[ \t]+.*\\)?\\)?[#{\n]" 3
+	    '("\\<\\(multi[ \t]+\\)?\\(sub\\)?\\(method\\)?[ \t]+\\([^ \t{;()]+\\)[ \t]*\\(([^()]*)[ \t]*\\(returns[ \t]+.*\\)?\\)?[#{\n]" 4
 	      font-lock-function-name-face)
 	    '("\\<\\(package\\|class\\|require\\|use\\|import\\|no\\|bootstrap\\)[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t;]" ; require A if B;
 	      2 font-lock-function-name-face)
@@ -6197,12 +6213,12 @@ indentation and initial hashes.  Behaves usually outside of comment."
 		;; XEmacs change: commented out
 		;; (not cperl6-xemacs-p) ; not yet as of XEmacs 19.12
 		'(
-		  ("\\(\\([@%]\\|\$#\\)[a-zA-Z_:][a-zA-Z0-9_:]*\\)" 1
+		  ("\\(\\([@%]\\|\$#\\)[a-zA-Z_:.^][a-zA-Z0-9_:]*\\)" 1     ; ss5: %.name %:name %^name
 		   (if (eq (char-after (match-beginning 2)) ?%)
 		       cperl6-hash-face
 		     cperl6-array-face)
 		   t)			; arrays and hashes
-		  ;; ss5: no more whitespace before subscripts allowed in Perl6
+; ss5: no more whitespace before subscripts allowed in Perl6
 ;		  ("\\(\\([$@]+\\)[a-zA-Z_:][a-zA-Z0-9_:]*\\)[ \t]*\\([[{]\\)"
 ;		   1
 ;		   (if (= (- (match-end 2) (match-beginning 2)) 1)
@@ -6222,7 +6238,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	  (if cperl6-highlight-variables-indiscriminately
 	      (setq t-font-lock-keywords-1
 		    (append t-font-lock-keywords-1
-			    (list '("[$*]{?\\(\\sw+\\)" 1
+			    (list '("[$*][{:.^]?\\(\\sw+\\)" 1         ; ss5: $.name $:name $^name
 				    font-lock-variable-name-face)))))
 	  (setq perl-font-lock-keywords-1
 		(if cperl6-syntaxify-by-font-lock
