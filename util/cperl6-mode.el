@@ -39,8 +39,6 @@
 ;;;
 ;;;          ### -*- mode: cperl6; -*-
 ;;;
-;;;  - Parenthesized rx// modifiers don't work: like rx:nth(3) or rx:perl5<i>
-;;;
 ;;;
 ;;; READ THIS:
 ;;;
@@ -1177,6 +1175,7 @@
 ;;;;   (currently rather trivial heuristic)
 ;;;;
 ;;;;  New rx// quote operator for regular expressions, 
+;;;;  parameterized rx// modifiers like perl5<i>, nth(3), x(3)
 ;;;;
 ;;;;  m// and s/// similar to new rx//
 ;;;;
@@ -1187,8 +1186,14 @@
 ;;;;
 ;;;;  No longer mark sub prototypes as string, just use ordinary highlighting.
 ;;;;
-;;;;  Highlight variable names with [.:^] after sigils (@.name, $:name, ...)
+;;;;  Highlight variable names with [.:^] after sigils (@.name, $:name, $^name)
 ;;;;
+;;;;  fixed $:name was wrongly interpreted as label
+;;;;
+;;;;  mini imenu fix: recognize pod =head3/=head4
+;;;;
+;;;;
+
 
 ;;; Code:
 
@@ -2431,9 +2436,9 @@ The expansion is entirely correct because it uses the C preprocessor."
 (defvar cperl6-imenu--function-name-regexp-perl
   (concat
    "^\\("
-	"[ \t]*\\(sub\\|package\\|class\\)[ \t\n]+\\([a-zA-Z_0-9:']+\\)[ \t]*\\(([^()]*)[ \t]*\\)?"
+   "[ \t]*\\(sub\\|package\\|class\\)[ \t\n]+\\([a-zA-Z_0-9:']+\\)[ \t]*\\(([^()]*)[ \t]*\\)?"
    "\\|"
-	"=head\\([12]\\)[ \t]+\\([^\n]+\\)$"
+   "=head\\([1234]\\)[ \t]+\\([^\n]+\\)$"
    "\\)"))
 
 (defvar cperl6-outline-regexp
@@ -3643,7 +3648,7 @@ Return the amount the indentation changed by."
 	     (backward-sexp)
 	     ;; Need take into account `bless', `return', `tr',...
 	     (or (and (looking-at "[a-zA-Z0-9_:]+[ \t\n\f]*[{#]") ; Method call syntax
-		      (not (looking-at "\\(bless\\|return\\|q[wqrx]?\\|rx\\|tr\\|[smy]\\)\\>")) ; ss5: rx, todo: useless? should be the full-length regex for rx and corresponding backward-sexp
+		      (not (looking-at "\\(bless\\|return\\|q[wqrx]?\\|rx\\|tr\\|[smy]\\)\\>")) ; ss5: rx
 		      (not (looking-at "\\$[a-zA-Z0-9_]+")))
 		 (progn
 		   (skip-chars-backward " \t\n\f")
@@ -3884,7 +3889,9 @@ and closing parentheses and brackets."
 		      (setq old-indent (current-indentation))
 		      (let ((colon-line-end 0))
 			(while (progn (skip-chars-forward " \t\n")
-				      (looking-at "#\\|[a-zA-Z0-9_$]*:[^:]"))
+				      (and (looking-at "#\\|[a-zA-Z0-9_$]*:[^:]")
+					   (not (looking-at "$:"))) ; ss5: don't misinterpret $:foo as label
+					   ) 
 			  ;; Skip over comments and labels following openbrace.
 			  (cond ((= (following-char) ?\#)
 				 (forward-line 1))
@@ -4478,8 +4485,8 @@ the sections using `cperl6-pod-head-face', `cperl6-pod-face',
 		"\\\\\\(['`\"]\\)"
 		;; 1+6+2+1+1+2+1+1+1+1=17 extra () before this:
 		"\\|"
-		"\\<\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<i>\\)?\\)\\s *\\)*\\)\\>:?"            ; ss5: rx
-		;; 1+6+2+1+1+2+1+1+1+1+5=22 extra () before this:                   ; ss5
+		"\\<\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)\\>:?"            ; ss5: rx
+		;; 1+6+2+1+1+2+1+1+1+1+7=24 extra () before this:                   ; ss5
 
 
 		)
@@ -4868,7 +4875,7 @@ the sections using `cperl6-pod-head-face', `cperl6-pod-face',
 		  ;; Check whether it is m// which means "previous match"
 		  ;; and highlight differently
 		  (setq is-REx
-			(and (string-match "^\\([sm]?\\|qr\\|rx\\)$" argument)     ; ss5: rx, todo: useless? should be the full-length regex for rx and corresponding backward-sexp
+			(and (string-match "^\\([sm]?\\|qr\\|rx\\)$" argument)     ; ss5: rx
 			     (or (not (= (length argument) 0))
 				 (not (eq c ?\<)))))
 		  (if (and is-REx
@@ -4887,9 +4894,9 @@ the sections using `cperl6-pod-head-face', `cperl6-pod-face',
 			    (and cperl6-fontify-m-as-s
 				 (or
 				  ;;(string-match "^\\(m\\|qr\\|rx\\)$" argument)     ; ss5
-				  (string-match "^\\(\\(qr\\|rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<i>\\)?\\)\\s *\\)*\\)$" argument)           ; ss5: rx
+				  (string-match "^\\(\\(qr\\|rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument)           ; ss5: rx
 				  (and (eq 0 (length argument))
-				       (not (eq ?\< (char-after b)))))))
+				       (not (eq ?\< (char-after b)))))))   ; ss5: todo: why not ?\<,  ?
 			(progn
 			  (cperl6-postpone-fontification
 			   b (cperl6-1+ b) 'face font-lock-constant-face)
@@ -5071,6 +5078,29 @@ the sections using `cperl6-pod-head-face', `cperl6-pod-face',
 		  ;; qtag means two-arg matcher, may be reset to
 		  ;;   2 or 3 later if some special quoting is needed.
 		  ;; e1 means matching-char matcher.
+		  ;;
+		  ;; ss5: don't misinterpret modifier params as regex delimiters
+		  (if (and (save-excursion
+			     (forward-char -6)
+			     (looking-at ":perl5"))
+			   (looking-at "<[a-zA-Z]+>"))
+		      (progn
+			(search-forward ">" nil t)
+			(skip-chars-forward " \t")))
+		  (if (and (save-excursion
+			     (forward-char -4)
+			     (looking-at ":nth"))
+			   (looking-at "([0-9]+)"))
+		      (progn
+			(search-forward ")" nil t)
+			(skip-chars-forward " \t")))
+		  (if (and (save-excursion
+			     (forward-char -2)
+			     (looking-at ":x"))
+			   (looking-at "([0-9]+)"))
+		      (progn
+			(search-forward ")" nil t)
+			(skip-chars-forward " \t")))
 		  (setq b (point)
 			;; has 2 args
 			i2 (string-match "^\\([sy]\\|tr\\)$" argument)
@@ -5098,7 +5128,7 @@ the sections using `cperl6-pod-head-face', `cperl6-pod-face',
 		       (setq qtag t))
 ;;		  (if (looking-at "\\sw*x") ; qr//x        ; ss5
 ;;		      (setq is-x-REx t))                   ; ss5
-		  (setq is-x-REx t)                        ; ss5: /x modifier is default in Perl6
+		  (setq is-x-REx t)                        ; ss5: Perl5 /x modifier is default in Perl6
 		  (if (null i)
 		      ;; Considered as 1arg form
 		      (progn
@@ -5164,7 +5194,7 @@ the sections using `cperl6-pod-head-face', `cperl6-pod-face',
 			    (and cperl6-fontify-m-as-s
 				 (or
 				  ;;(string-match "^\\(m\\|qr\\|rx\\)$" argument)           ; ss5: rx
-				  (string-match "^\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<i>\\)?\\)\\s *\\)*\\)$" argument)           ; ss5
+				  (string-match "^\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[0-9]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument)           ; ss5: rx
 				  (and (eq 0 (length argument))
 				       (not (eq ?\< (char-after b)))))))
 			(progn
