@@ -6066,12 +6066,15 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      (mapconcat
 	       'identity
 	       '("if" "until" "while" "elsif" "else" "unless" "for" "loop"
-		 "foreach" "continue" "exit" "die" "last" "goto" "given" "when" "default" "has" "next"
-		 "redo" "return" "returns" "of" "is" "local" "exec"
-		 "\\(multi[ \t]+\\)?\\(sub\\)?\\(method\\)?" "do" "dump" "use"
-		 "require" "package" "class" "eval" "try" "my"
-		 "BEGIN" "END" "CHECK" "INIT" "FIRST" "ENTER" "LEAVE" "KEEP"
-		 "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL")
+		 "foreach" "continue" "exit" "die" "last" "goto" "next"
+		 "redo" "return" "local" "exec" "do" "dump" "use"
+		 "require" "package" "eval" "my" "BEGIN" "END" "CHECK" "INIT"
+		 "FIRST" "ENTER" "LEAVE" "KEEP"
+		 "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL"
+		 "given" "when" "default" "has" "returns" "of" "is"
+		 "\\(multi[ \t]+\\)?\\(sub\\)?\\(method\\)?"
+		 "class" "try" 
+		 )
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
 					; In what follows we use `type' style
