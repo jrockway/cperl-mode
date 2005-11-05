@@ -1322,6 +1322,10 @@
 ;;; After 5.10:
 ;;;
 ;;; Modified to understand Perl6 syntax.
+;;; See http://renormalist.net/cgi-bin/twiki/view/Renormalist/CPerlMode
+;;; for more description and usage. Contact me at <schwigon@webit.de> for
+;;; bugs reports.
+;;;
 ;;; Details:
 ;;;
 ;;;  New variable `cperl-use-v6' that switches between Perl5/Perl6
