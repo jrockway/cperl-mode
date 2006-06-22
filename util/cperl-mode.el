@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el 246 2006-06-22 21:40:17Z ss5 $
+;; $Id: cperl-mode.el 247 2006-06-22 22:10:13Z ss5 $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -5271,7 +5271,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		;; 1+6+2=9 extra () before this:
         (if (not cperl-use-v6)
             "\\<\\(q[wxqr]?\\|[msy]\\|tr\\)\\>" ; QUOTED CONSTRUCT
-          "\\<\\(q[wxq]?\\|[y]\\|tr\\)\\>" ; QUOTED CONSTRUCT; ss5
+          "\\<\\(q[wxqr]?\\|[y]\\|tr\\)\\>" ; QUOTED CONSTRUCT; ss5
           )
 		"\\|"
 		;; 1+6+2+1=10 extra () before this:
@@ -5851,7 +5851,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			    (and cperl-fontify-m-as-s
 				 (or
 				  ;; (string-match "^\\(m\\|qr\\)$" argument)    ; ss5
-				  (string-match "^\\(\\(qr\\|rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument)           ; ss5: rx
+				  (string-match "^\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument)           ; ss5: rx
 				  (and (eq 0 (length argument))
 				       (not (eq ?\< (char-after b)))))))
 			(progn
