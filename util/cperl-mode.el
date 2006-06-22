@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el 197 2005-11-05 00:29:24Z ss5 $
+;; $Id: cperl-mode.el 241 2006-06-22 09:46:29Z ss5 $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1322,10 +1322,6 @@
 ;;; After 5.10:
 ;;;
 ;;; Modified to understand Perl6 syntax.
-;;; See http://renormalist.net/cgi-bin/twiki/view/Renormalist/CPerlMode
-;;; for more description and usage. Contact me at <schwigon@webit.de> for
-;;; bugs reports.
-;;;
 ;;; Details:
 ;;;
 ;;;  New variable `cperl-use-v6' that switches between Perl5/Perl6
@@ -1377,7 +1373,7 @@
 ;;;
 ;;;  No longer mark sub prototypes as string, just use ordinary highlighting.
 ;;;
-;;;  Highlight variable names with [.:^] after sigils (@.name, $:name, $^name)
+;;;  Highlight variable names with [.:^*+?=!] after twigils (@.name, $:name, $^name, ...)
 ;;;
 ;;;  Fixed $:name was wrongly interpreted as label
 ;;;
@@ -7102,7 +7098,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 		     (and (string< "21.1.10" emacs-version)
 			  (string< emacs-version "21.1.2")))
 		    '(
-		      ("\\(\\([@%]\\|\$#\\)[a-zA-Z_::.^][a-zA-Z0-9_:]*\\)" 1 ; ss5: %.name %:name %^name
+		      ("\\(\\([@%]\\|\$#\\)[a-zA-Z_.:^*+?=!][a-zA-Z0-9_:]*\\)" 1 ; ss5: %.name %:name %^name, %*name, %+name, %?name, %=name, %!name
 		       (if (eq (char-after (match-beginning 2)) ?%)
 			   cperl-hash-face
 			 cperl-array-face)
@@ -9858,7 +9854,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 197 $"))
+  (let ((v  "$Revision: 241 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
