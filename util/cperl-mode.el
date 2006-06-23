@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el 247 2006-06-22 22:10:13Z ss5 $
+;; $Id: cperl-mode.el 249 2006-06-23 12:05:32Z ss5 $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1470,7 +1470,7 @@
 ;;;    rx
 ;;;    any, all, one, none
 ;;;    returns, of
-;;;    multi sub, multi submethod, method,
+;;;    multi/proto sub method,
 ;;;    given, when, default, loop
 ;;;    gather, take, taken
 ;;;    try
@@ -5269,9 +5269,9 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 	       (concat
 		"\\|"
 		;; 1+6+2=9 extra () before this:
-        (if (not cperl-use-v6)
-            "\\<\\(q[wxqr]?\\|[msy]\\|tr\\)\\>" ; QUOTED CONSTRUCT
-          "\\<\\(q[wxqr]?\\|[y]\\|tr\\)\\>" ; QUOTED CONSTRUCT; ss5
+        (if (not cperl-use-v6) ; ss5
+            "\\<\\(q[wxqr]?\\|[msy]\\|tr\\)\\>" ; QUOTED CONSTRUCT - Perl5
+          "\\<\\(q[wxqr]?\\|[y]\\|tr\\)\\>" ; QUOTED CONSTRUCT - Perl6
           )
 		"\\|"
 		;; 1+6+2+1=10 extra () before this:
@@ -5298,10 +5298,10 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		;; 1+6+2+1+1+6+1+1+1=20 extra () before this:
 		"\\|"
 		"\\\\\\(['`\"($]\\)"	; BACKWACKED something-hairy
-		;; 1+6+2+1+1+6+1+1+1+1=21 extra () before this:
+		;; 1+6+2+1+1+6+1+1+1+1=21 extra () before this: ; ss5
 		"\\|"
 		"\\<\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)\\>:?")            ; ss5: rx
-		;; 1+6+2+1+1+6+1+1+1+1+7=28 extra () before this:     ; ss5; nochmachen
+		;; 1+6+2+1+1+6+1+1+1+1+7=28 extra () before this: ; ss5
 	     ""))))
     (unwind-protect
 	(progn
@@ -6914,7 +6914,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 	     (backward-sexp)
 	     ;; sub {BLK}, print {BLK} $data, but NOT `bless', `return', `tr'
 	     (or (and (looking-at "[a-zA-Z0-9_:]+[ \t\n\f]*[{#]") ; Method call syntax
-		      (not (looking-at "\\(bless\\|return\\|q[wqrx]?\\|rx\\|tr\\|[smy]\\) *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)\\>:?")) ;; ss5: 22.6.2006
+		      (not (looking-at "\\(bless\\|return\\|\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\):?\\)")) ;; ss5 23.06.2006
 		      (not (looking-at "\\$[a-zA-Z0-9_]+"))) ; ss5: todo: why? (topics before blockstart?); even better [$@%]?
 		 ;; sub bless::foo {}
 		 (progn
@@ -7775,7 +7775,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
              "INIT" "FIRST" "ENTER" "LEAVE" "KEEP"
              "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL"
              "given" "when" "default" "has" "returns" "of" "is" "does"
-             "\\(multi[ \t]+\\)?\\(sub\\)?\\(method\\)?"
+             "\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\)?\\(method\\)?"
              "class" "try")
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
@@ -7902,9 +7902,9 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    ;; This highlights declarations and definitions differenty.
 	    ;; We do not try to highlight in the case of attributes:
 	    ;; it is already done by `cperl-find-pods-heres'
-	    (list (concat "\\<\\(multi[ \t]+\\)?\\(sub\\)?\\(method\\)?" ; ss5: multi sub methods
+	    (list (concat "\\<\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\)?\\(method\\)?" ; ss5: multi|proto sub methods
 			  cperl-white-and-comment-rex ; whitespace/comments
-			  "\\([^ \n\t{;()]+\\)" ; 2=name (assume non-anonymous)
+			  "\\([^ \n\t{;()]+\\)" ; 5=name (assume non-anonymous)
 			  "\\("
 			    cperl-maybe-white-and-comment-rex ;whitespace/comments?
 			    "([^()]*)\\)?" ; prototype
@@ -7912,7 +7912,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			    "\\(returns[ \t]+.*\\)?" ; ss5: returns
 			  cperl-maybe-white-and-comment-rex ; whitespace/comments?
 			  "[{;]")
-		  5 (if cperl-font-lock-multiline
+		  6 (if cperl-font-lock-multiline
 			'(if (eq (char-after (cperl-1- (match-end 0))) ?\{ )
 			     'font-lock-function-name-face
 			   'font-lock-variable-name-face)
@@ -8977,7 +8977,7 @@ by CPerl."
 			(number-to-string (1- (elt elt 1))) ; Char pos 0-based
 			"\n")
 		(if (and (string-match "^[_a-zA-Z]+::" (car elt))
-			 (string-match "^sub[ \t]+\\([_a-zA-Z]+\\)[^:_a-zA-Z]" ; ss5: TODO multi submethods
+			 (string-match "^sub[ \t]+\\([_a-zA-Z]+\\)[^:_a-zA-Z]" ; ss5: TODO: multi|proto submethods
 				       (elt elt 3)))
 		    ;; Need to insert the name without package as well
 		    (setq lst (cons (cons (substring (elt elt 3)
