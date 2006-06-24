@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el 249 2006-06-23 12:05:32Z ss5 $
+;; $Id: cperl-mode.el 253 2006-06-24 22:30:18Z ss5 $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -2955,7 +2955,7 @@ the last)."
 
 ;;; Details of groups in this are used in `cperl-imenu--create-perl-index'
 ;;;  and `cperl-outline-level'.
-;;;; Was: 2=sub|package; now 2=package-group, 5=package-name 8=sub-name (+3)
+;;;; Was: 2=sub|package; now 2=package-group, 5=package-name 11=sub-name (+3)
 (defvar cperl-imenu--function-name-regexp-perl
   (concat
    "^\\("				; 1 = all
@@ -2964,12 +2964,12 @@ the last)."
 	    cperl-white-and-comment-rex ; 4 = pre-package-name
 	       "\\([a-zA-Z_0-9:']+\\)\\)?\\)" ; 5 = package-name
        "\\|"
-          "[ \t]*sub"
-	  (cperl-after-sub-regexp 'named nil) ; 8=name 11=proto 14=attr-start
-	  cperl-maybe-white-and-comment-rex	; 15=pre-block
+          "[ \t]*\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\|method\\|submethod\\)" ; ss5
+	  (cperl-after-sub-regexp 'named nil) ; 11=name 14=proto 17=attr-start
+	  cperl-maybe-white-and-comment-rex	; 18=pre-block
    "\\|"
-     "=head\\([1-4]\\)[ \t]+"		; 16=level
-     "\\([^\n]+\\)$"			; 17=text
+     "=head\\([1-4]\\)[ \t]+"		; 19=level
+     "\\([^\n]+\\)$"			; 20=text
    "\\)"))
 
 (defvar cperl-outline-regexp
@@ -3283,8 +3283,8 @@ or as help on variables `cperl-tips', `cperl-problems',
   (setq comment-start-skip "#+ *")
   (make-local-variable 'defun-prompt-regexp)
 ;;;       "[ \t]*sub"
-;;;	  (cperl-after-sub-regexp 'named nil) ; 8=name 11=proto 14=attr-start
-;;;	  cperl-maybe-white-and-comment-rex	; 15=pre-block
+;;;	  (cperl-after-sub-regexp 'named nil) ; 11=name 14=proto 17=attr-start
+;;;	  cperl-maybe-white-and-comment-rex	; 16=pre-block
   (setq defun-prompt-regexp
 	(concat "[ \t]*sub"
 		(cperl-after-sub-regexp 'named 'attr-groups)
@@ -4580,7 +4580,7 @@ and closing parentheses and brackets."
 			       (and (eq (preceding-char) ?b)
 				    (progn
 				      (forward-sexp -1)
-				      (looking-at "sub\\>"))))
+				      (looking-at "\\(sub\\|method\\)\\>")))) ; ss5
 			      (setq old-indent
 				    (nth 1
 					 (parse-partial-sexp
@@ -6922,7 +6922,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		   (and (eq (preceding-char) ?b)
 			(progn
 			  (forward-sexp -1)
-			  (looking-at "sub[ \t\n\f#]")))))))
+			  (looking-at "\\(sub\\|method\\)[ \t\n\f#]"))))))) ; ss5
       (if cperl-use-v6
 	  (progn ; ss5: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
 	    (beginning-of-line)
@@ -6964,7 +6964,7 @@ statement would start; thus the block in ${func()} does not count."
 			  (and (eq (preceding-char) ?b)
 			       (progn
 				 (forward-sexp -1)
-				 (looking-at "sub[ \t\n\f#]"))))))
+				 (looking-at "\\(sub\\|method\\)[ \t\n\f#]")))))) ; ss5
 		   (save-excursion ; ss5: return Type {} / is rw {} / is cached {} / ...
 		     (forward-sexp -2)
 		     (looking-at "\\(returns\\|of\\|is\\|does[ \t]\\(rw\\|cached\\|signature\\|parsed\\|inline\\|tighter\\|looser\\|equiv\\|export\\)\\|will[ \t]do\\)\\>")))
@@ -7540,7 +7540,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      nil t)
 	(or noninteractive
 	    (imenu-progress-message prev-pos))
-	;; 2=package-group, 5=package-name 8=sub-name
+	;; 2=package-group, 5=package-name 11=sub-name
 	(cond
 	 ((and				; Skip some noise if building tags
 	   (match-beginning 5)		; package name
@@ -7550,7 +7550,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	  nil)
 	 ((and
 	   (or (match-beginning 2)
-	       (match-beginning 8))		; package or sub
+	       (match-beginning 11))		; package or sub
 	   ;; Skip if quoted (will not skip multi-line ''-strings :-():
 	   (null (get-text-property (match-beginning 1) 'syntax-table))
 	   (null (get-text-property (match-beginning 1) 'syntax-type))
@@ -7589,10 +7589,10 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	  (if (and is-proto (not is-pack)) nil
 	    (or is-pack
 		(setq name
-		      (buffer-substring (match-beginning 8) (match-end 8)))
+		      (buffer-substring (match-beginning 11) (match-end 11)))
 		(set-text-properties 0 (length name) nil name))
 	    (setq marker (make-marker))
-	    (set-marker marker (match-end (if is-pack 2 8)))
+	    (set-marker marker (match-end (if is-pack 2 11)))
 	    (cond (is-pack nil)
 		  ((string-match "[:']" name)
 		   (setq meth t))
@@ -7605,13 +7605,13 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      (push index index-alist))
 	    (if meth (push index index-meth-alist))
 	    (push index index-unsorted-alist)))
-	 ((match-beginning 16)		; POD section
-	  (setq name (buffer-substring (match-beginning 17) (match-end 17))
+	 ((match-beginning 19)		; POD section
+	  (setq name (buffer-substring (match-beginning 20) (match-end 20))
 		marker (make-marker))
-	  (set-marker marker (match-beginning 17))
+	  (set-marker marker (match-beginning 20))
 	  (set-text-properties 0 (length name) nil name)
 	  (setq name (concat (make-string
-			      (* 3 (- (char-after (match-beginning 16)) ?1))
+			      (* 3 (- (char-after (match-beginning 19)) ?1))
 			      ?\ )
 			     name)
 		index (cons name marker))
@@ -7632,7 +7632,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	 (let ((lst index-pack-alist) hier-list pack elt group name)
 	   ;; Remove "package ", reverse and uniquify.
 	   (while lst
-	     (setq elt (car lst) lst (cdr lst) name (substring (car elt) 8))
+	     (setq elt (car lst) lst (cdr lst) name (substring (car elt) 11))
 	     (if (assoc name hier-list) nil
 	       (setq hier-list (cons (cons name (cdr elt)) hier-list))))
 	   (setq lst index-meth-alist)
@@ -7680,11 +7680,11 @@ indentation and initial hashes.  Behaves usually outside of comment."
 (defun cperl-outline-level ()
   (looking-at outline-regexp)
   (cond ((not (match-beginning 1)) 0)	; beginning-of-file
-;;;; 2=package-group, 5=package-name 8=sub-name 16=head-level
+;;;; 2=package-group, 5=package-name 11=sub-name 19=head-level
 	((match-beginning 2) 0)		; package
-	((match-beginning 8) 1)		; sub
-	((match-beginning 16)
-	 (- (char-after (match-beginning 16)) ?0)) ; headN ==> N
+	((match-beginning 11) 1)		; sub
+	((match-beginning 19)
+	 (- (char-after (match-beginning 19)) ?0)) ; headN ==> N
 	(t 5)))				; should not happen
 
 
@@ -7962,7 +7962,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			nil t)))	; local variables, multiple
 		  (font-lock-anchored
 		   ;; 1=my_etc, 2=white? 3=(+white? 4=white? 5=var
-		   (` ((, (concat "\\<\\(has\\|my\\|local\\|our\\)"
+		   (` ((, (concat "\\<\\(has\\|my\\|local\\|our\\|state\\)"
 				  cperl-maybe-white-and-comment-rex
 				  "\\(("
 				     cperl-maybe-white-and-comment-rex
