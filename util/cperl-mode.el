@@ -6956,7 +6956,7 @@ statement would start; thus the block in ${func()} does not count."
 		   (save-excursion
 		    (forward-sexp -1)
 		    ;; else {}     but not    else::func {}
-		    (or (and (looking-at "\\(else\\|class\\|\\|continue\\|grep\\|map\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\|method\\|submethod\\)\\)\\>")
+		    (or (and (looking-at "\\(else\\|class\\|\\|continue\\|grep\\|map\\|gather\\|async\\|atomically\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\|method\\|submethod\\)\\)\\>")
 			     (not (looking-at "\\(\\sw\\|_\\)+::")))
 			;; sub f {}
 			(progn
@@ -6973,7 +6973,7 @@ statement would start; thus the block in ${func()} does not count."
 	      (save-excursion ; ss5: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
 		;; ss5: todo: correct in P5? Then use-v6'ify!
 		(beginning-of-line)
-		(looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|class\\|given\\|wh\\(ile\\|en\\)\\|loop\\|for\\|\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\|method\\|submethod\\)\\)\\>"))))
+		(looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|class\\|gather\\|async\\|atomically\\|given\\|wh\\(ile\\|en\\)\\|loop\\|for\\|\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\|method\\|submethod\\)\\)\\>"))))
       (error nil))))
 
 (defun cperl-after-expr-p (&optional lim chars test)
@@ -7873,7 +7873,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    (list
 	     (concat
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
-	      ;; "AUTOLOAD" "BEGIN" "CHECK" "DESTROY" "END" "INIT" "__END__" "chomp"
+	      ;; "AUTOLOAD" "BEGIN" "CHECK" "DESTROY" "END" "INIT" "__END__" "async" "atomically" "chomp"
 	      ;; "chop" "class" "defined" "delete" "do" "each" "else" "elsif"
 	      ;; "eval" "exists" "for" "foreach" "format" "gather" "goto"
 	      ;; "grep" "has" "if" "keys" "kv" "last" "local" "loop" "map" "my" "next"
@@ -7882,7 +7882,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      ;; "sort" "splice" "split" "study" "state" "sum" "take" "type" "sub" "tie" "tr"
 	      ;; "undef" "uniq" "unless" "unshift" "untie" "until" "uniq" "use"
 	      ;; "while" "y" "zip"
-	      "AUTOLOAD\\|BEGIN\\|CHECK\\|c\\(lass\\|ho\\(p\\|mp\\)\\)\\|d\\(e\\(fined\\|lete\\)\\|"
+	      "AUTOLOAD\\|BEGIN\\|CHECK\\|a\\(sync\\|tomically\\)\\|c\\(lass\\|ho\\(p\\|mp\\)\\)\\|d\\(e\\(fined\\|lete\\)\\|"
 	      "o\\)\\|DESTROY\\|e\\(ach\\|val\\|xists\\|ls\\(e\\|if\\)\\)\\|"
 	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(ather\\|rep\\|oto\\)\\|has\\|INIT\\|if\\|k\\(eys\\|v\\)\\|"
 	      "l\\(ast\\|o\\(cal\\|op\\)\\)\\|m\\(a\\(p\\|x\\)\\|in\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
