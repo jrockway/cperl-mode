@@ -1462,25 +1462,23 @@
 ;;;   * file suffix .p6
 ;;;
 ;;;  Highlighting new keywords/builtins:
-;;;    class
-;;;    has
-;;;    state
-;;;    does
-;;;    say
-;;;    rx
-;;;    any, all, one, none
-;;;    returns, of
+;;;    class,
+;;;    has, state, does,
+;;;    say,
+;;;    rx,
+;;;    any, all, one, none,
+;;;    returns, of,
 ;;;    multi/proto sub method,
-;;;    given, when, default, loop
-;;;    gather, take, taken
-;;;    try
-;;;    err
-;;;    zip, uniq, reduce, sum, max, min, kv, pairs, type, pick
-;;;    "bit" "int" "str" "num" "ref" "bool" "Bit" "Int" "Str" "Num" "Ref"
-;;;    "Complex" "Exception" "Seq" "Range" "Set" "Junction" "Pair" "Mapping" "Signature" "Capture"
-;;;    "Bool" "Array" "Hash" "IO" "Code" "Routine" "Sub" "Method" "Submethod"
-;;;    "Macro" "Rule" "Block" "Bare" "Parametric" "Package" "Module" "Class"
-;;;    "Object" "Grammar" "List" "Lazy" "Eager" 
+;;;    given, when, default, loop,
+;;;    gather, take, taken,
+;;;    coro, yield,
+;;;    try, err,
+;;;    zip, uniq, reduce, sum, max, min, kv, pairs, type, pick,
+;;;    "bit" "int" "str" "num" "ref" "bool" "Bit" "Int" "Str" "Num" "Ref",
+;;;    "Complex" "Exception" "Seq" "Range" "Set" "Junction" "Pair" "Mapping" "Signature" "Capture",
+;;;    "Bool" "Array" "Hash" "IO" "Code" "Routine" "Sub" "Method" "Submethod",
+;;;    "Macro" "Rule" "Block" "Bare" "Parametric" "Package" "Module" "Class",
+;;;    "Object" "Grammar" "List" "Lazy" "Eager",
 ;;;    "Real" "Scalar" "int8" "Socket"
 ;;;
 ;;;  Indentation:
@@ -2964,7 +2962,7 @@ the last)."
 	    cperl-white-and-comment-rex ; 4 = pre-package-name
 	       "\\([a-zA-Z_0-9:']+\\)\\)?\\)" ; 5 = package-name
        "\\|"
-          "[ \t]*\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\|method\\|submethod\\)" ; ss5
+          "[ \t]*\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?" ; ss5
 	  (cperl-after-sub-regexp 'named nil) ; 11=name 14=proto 17=attr-start
 	  cperl-maybe-white-and-comment-rex	; 18=pre-block
    "\\|"
@@ -4580,7 +4578,7 @@ and closing parentheses and brackets."
 			       (and (eq (preceding-char) ?b)
 				    (progn
 				      (forward-sexp -1)
-				      (looking-at "\\(sub\\|method\\)\\>")))) ; ss5
+				      (looking-at "\\(coro\\|sub\\|method\\|submethod\\)\\>")))) ; ss5
 			      (setq old-indent
 				    (nth 1
 					 (parse-partial-sexp
@@ -6922,7 +6920,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		   (and (eq (preceding-char) ?b)
 			(progn
 			  (forward-sexp -1)
-			  (looking-at "\\(sub\\|method\\)[ \t\n\f#]"))))))) ; ss5
+			  (looking-at "\\(coro\\|sub\\|method\\|submethod\\)[ \t\n\f#]"))))))) ; ss5
       (if cperl-use-v6
 	  (progn ; ss5: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
 	    (beginning-of-line)
@@ -6956,7 +6954,7 @@ statement would start; thus the block in ${func()} does not count."
 		   (save-excursion
 		    (forward-sexp -1)
 		    ;; else {}     but not    else::func {}
-		    (or (and (looking-at "\\(else\\|class\\|\\|continue\\|grep\\|map\\|gather\\|async\\|atomically\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\|method\\|submethod\\)\\)\\>")
+		    (or (and (looking-at "\\(else\\|class\\|\\|continue\\|grep\\|map\\|gather\\|async\\|atomically\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>")
 			     (not (looking-at "\\(\\sw\\|_\\)+::")))
 			;; sub f {}
 			(progn
@@ -6964,7 +6962,7 @@ statement would start; thus the block in ${func()} does not count."
 			  (and (eq (preceding-char) ?b)
 			       (progn
 				 (forward-sexp -1)
-				 (looking-at "\\(sub\\|method\\)[ \t\n\f#]")))))) ; ss5
+				 (looking-at "\\(coro\\|sub\\|method\\|submethod\\)[ \t\n\f#]")))))) ; ss5
 		   (save-excursion ; ss5: return Type {} / is rw {} / is cached {} / ...
 		     (forward-sexp -2)
 		     (looking-at "\\(returns\\|of\\|is\\|does[ \t]\\(rw\\|cached\\|signature\\|parsed\\|inline\\|tighter\\|looser\\|equiv\\|export\\)\\|will[ \t]do\\)\\>")))
@@ -6973,7 +6971,7 @@ statement would start; thus the block in ${func()} does not count."
 	      (save-excursion ; ss5: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
 		;; ss5: todo: correct in P5? Then use-v6'ify!
 		(beginning-of-line)
-		(looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|class\\|gather\\|async\\|atomically\\|given\\|wh\\(ile\\|en\\)\\|loop\\|for\\|\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\|method\\|submethod\\)\\)\\>"))))
+		(looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|class\\|gather\\|async\\|atomically\\|given\\|wh\\(ile\\|en\\)\\|loop\\|for\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>"))))
       (error nil))))
 
 (defun cperl-after-expr-p (&optional lim chars test)
@@ -7775,7 +7773,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
              "INIT" "FIRST" "ENTER" "LEAVE" "KEEP"
              "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL"
              "given" "when" "default" "has" "returns" "of" "is" "does"
-             "\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\)?\\(method\\)?"
+             "\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?"
              "class" "try")
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
@@ -7874,7 +7872,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	     (concat
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
 	      ;; "AUTOLOAD" "BEGIN" "CHECK" "DESTROY" "END" "INIT" "__END__" "async" "atomically" "chomp"
-	      ;; "chop" "class" "defined" "delete" "do" "each" "else" "elsif"
+	      ;; "chop" "class" "coro" "defined" "delete" "do" "each" "else" "elsif"
 	      ;; "eval" "exists" "for" "foreach" "format" "gather" "goto"
 	      ;; "grep" "has" "if" "keys" "kv" "last" "local" "loop" "map" "my" "next"
 	      ;; "no" "our" "pairs" "package" "pop" "pos" "pick" "print" "printf" "push"
@@ -7882,7 +7880,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      ;; "sort" "splice" "split" "study" "state" "sum" "take" "type" "sub" "tie" "tr"
 	      ;; "undef" "uniq" "unless" "unshift" "untie" "until" "uniq" "use"
 	      ;; "while" "y" "zip"
-	      "AUTOLOAD\\|BEGIN\\|CHECK\\|a\\(sync\\|tomically\\)\\|c\\(lass\\|ho\\(p\\|mp\\)\\)\\|d\\(e\\(fined\\|lete\\)\\|"
+	      "AUTOLOAD\\|BEGIN\\|CHECK\\|a\\(sync\\|tomically\\)\\|c\\(lass\\|ho\\(p\\|mp\\)\\|oro\\)\\|d\\(e\\(fined\\|lete\\)\\|"
 	      "o\\)\\|DESTROY\\|e\\(ach\\|val\\|xists\\|ls\\(e\\|if\\)\\)\\|"
 	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(ather\\|rep\\|oto\\)\\|has\\|INIT\\|if\\|k\\(eys\\|v\\)\\|"
 	      "l\\(ast\\|o\\(cal\\|op\\)\\)\\|m\\(a\\(p\\|x\\)\\|in\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
@@ -7902,7 +7900,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    ;; This highlights declarations and definitions differenty.
 	    ;; We do not try to highlight in the case of attributes:
 	    ;; it is already done by `cperl-find-pods-heres'
-	    (list (concat "\\<\\(\\(multi\\|proto\\)[ \t]+\\)?\\(sub\\)?\\(method\\)?" ; ss5: multi|proto sub methods
+	    (list (concat "\\<\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?" ; ss5: multi|proto sub methods
 			  cperl-white-and-comment-rex ; whitespace/comments
 			  "\\([^ \n\t{;()]+\\)" ; 5=name (assume non-anonymous)
 			  "\\("
@@ -7912,7 +7910,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			    "\\(returns[ \t]+.*\\)?" ; ss5: returns
 			  cperl-maybe-white-and-comment-rex ; whitespace/comments?
 			  "[{;]")
-		  6 (if cperl-font-lock-multiline
+		  5 (if cperl-font-lock-multiline
 			'(if (eq (char-after (cperl-1- (match-end 0))) ?\{ )
 			     'font-lock-function-name-face
 			   'font-lock-variable-name-face)
