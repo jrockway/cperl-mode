@@ -1459,7 +1459,7 @@
 ;;;
 ;;;  Simple heuristics to automatically recognize Perl6
 ;;;   * search for "use v6" or "class ..." near beginning of file
-;;;   * file suffix .p6
+;;;   * file suffix .pl
 ;;;
 ;;;  Highlighting new keywords/builtins:
 ;;;    class,
