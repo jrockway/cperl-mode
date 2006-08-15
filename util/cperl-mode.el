@@ -1484,7 +1484,7 @@
 ;;;  Indentation:
 ;;;    recognize sub traits (returns Type, is rw, etc.)
 ;;;    recognize more special blocks:
-;;;      FIRST, ENTER, LEAVE, KEEP, UNDO, NEXT,
+;;;      START, ENTER, LEAVE, KEEP, UNDO, FIRST, NEXT,
 ;;;      LAST, PRE, POST, CATCH, CONTROL,
 ;;;      given, when, default, gather, loop
 ;;;
@@ -6954,7 +6954,7 @@ statement would start; thus the block in ${func()} does not count."
 		   (save-excursion
 		    (forward-sexp -1)
 		    ;; else {}     but not    else::func {}
-		    (or (and (looking-at "\\(else\\|class\\|\\|continue\\|grep\\|map\\|gather\\|async\\|atomically\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>")
+		    (or (and (looking-at "\\(else\\|class\\|\\|continue\\|grep\\|map\\|gather\\|async\\|atomically\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|START\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>")
 			     (not (looking-at "\\(\\sw\\|_\\)+::")))
 			;; sub f {}
 			(progn
@@ -7770,7 +7770,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
              "foreach" "continue" "exit" "die" "last" "loop" "goto" "next"
              "redo" "return" "local" "exec" "sub" "do" "dump" "use" "our" "state"
              "require" "package" "eval" "my" "BEGIN" "END" "CHECK"
-             "INIT" "FIRST" "ENTER" "LEAVE" "KEEP"
+             "INIT" "START" "FIRST" "ENTER" "LEAVE" "KEEP"
              "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL"
              "given" "when" "default" "has" "returns" "of" "is" "does"
              "\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?"
