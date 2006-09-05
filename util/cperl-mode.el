@@ -1449,6 +1449,13 @@
 ;;; Perl/Regexp menu:		3 new entries for `cperl-next-interpolated-REx'
 ;;; `cperl-praise':		Mention finded interpolated RExen.
 
+;;; After 5.19:
+;;; `cperl-init-faces':		Highlight %$foo, @$foo too.
+;;; `cperl-short-docs':		Better docs for system, exec
+;;; `cperl-find-pods-heres':	Better detect << after print {FH} <<EOF etc.
+;;;				Would not find HERE-doc ended by EOF without NL
+;;; `cperl-short-docs':		Correct not-doubled \-escapes
+
 ;;; Perl6 changes for Pugs by Steffen Schwigon (http://renormalist.net)
 ;;;
 ;;; Modified to understand Perl6 syntax.
@@ -1457,9 +1464,9 @@
 ;;;  New variable `cperl-use-v6' that switches between Perl5/Perl6
 ;;;  syntax.
 ;;;
-;;;  Simple heuristics to automatically recognize Perl6
+;;;  Simple heuristics to automatically activate Perl6 specific syntax
 ;;;   * search for "use v6" or "class ..." near beginning of file
-;;;   * file suffix .pl
+;;;   * file suffix .p6
 ;;;
 ;;;  Highlighting new keywords/builtins:
 ;;;    class,
@@ -1533,6 +1540,9 @@
       (defvar gud-perldb-history)
       (defvar font-lock-background-mode) ; not in Emacs
       (defvar font-lock-display-type)	; ditto
+      (defvar paren-backwards-message)	; Not in newer XEmacs?
+      (defvar vc-rcs-header)		; likewise?
+      (defvar vc-sccs-header)		; likewise?
       (or (fboundp 'defgroup)
 	  (defmacro defgroup (name val doc &rest arr)
 	    nil))
@@ -5267,10 +5277,10 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 	       (concat
 		"\\|"
 		;; 1+6+2=9 extra () before this:
-        (if (not cperl-use-v6) ; ss5
-            "\\<\\(q[wxqr]?\\|[msy]\\|tr\\)\\>" ; QUOTED CONSTRUCT - Perl5
-          "\\<\\(q[wxqr]?\\|[y]\\|tr\\)\\>" ; QUOTED CONSTRUCT - Perl6
-          )
+		(if (not cperl-use-v6) ; ss5
+		    "\\<\\(q[wxqr]?\\|[msy]\\|tr\\)\\>" ; QUOTED CONSTRUCT - Perl5
+		  "\\<\\(q[wxq]?\\)\\>" ; QUOTED CONSTRUCT - Perl6
+		  )
 		"\\|"
 		;; 1+6+2+1=10 extra () before this:
 		"\\([?/<]\\)"	; /blah/ or ?blah? or <file*glob>
@@ -5298,7 +5308,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\\\\\(['`\"($]\\)"	; BACKWACKED something-hairy
 		;; 1+6+2+1+1+6+1+1+1+1=21 extra () before this: ; ss5
 		"\\|"
-		"\\<\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)\\>:?")            ; ss5: rx
+		"\\<\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)\\>:?")            ; ss5: rx
 		;; 1+6+2+1+1+6+1+1+1+1+7=28 extra () before this: ; ss5
 	     ""))))
     (unwind-protect
@@ -5490,7 +5500,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 						(progn
 						  (forward-sexp -2)
 						  (not
-						   (looking-at "print\\>")))
+						   (looking-at "\\(printf?\\|system\\|exec\\|sort\\)\\>")))
 						(error t)))))))
 				   (error nil))) ; func(<<EOF)
 			       (and (not (match-beginning 6)) ; Empty
@@ -5520,7 +5530,8 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		  ;; some hook of fontification, and max is random
 		  (or (and (re-search-forward (concat "^" qtag "$")
 					      stop-point 'toend)
-			   (eq (following-char) ?\n))
+			   ;;;(eq (following-char) ?\n) ; XXXX WHY???
+			   )
 		    (progn		; Pretend we matched at the end
 		      (goto-char (point-max))
 		      (re-search-forward "\\'")
@@ -5849,7 +5860,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			    (and cperl-fontify-m-as-s
 				 (or
 				  ;; (string-match "^\\(m\\|qr\\)$" argument)    ; ss5
-				  (string-match "^\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument)           ; ss5: rx
+				  (string-match "^\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument)           ; ss5: rx
 				  (and (eq 0 (length argument))
 				       (not (eq ?\< (char-after b)))))))
 			(progn
@@ -6481,7 +6492,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 						(and cperl-fontify-m-as-s
 							 (or
 							  ;; (string-match "^\\(m\\|qr\\)$" argument)    ; ss5
-							  (string-match "^\\(\\(qr\\|rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument) ; ss5: rx
+							  (string-match "^\\(\\(qr\\|rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument) ; ss5: rx
 							  (and (eq 0 (length argument))
 								   (not (eq ?\< (char-after b)))))))
 					(progn
@@ -6912,7 +6923,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 	     (backward-sexp)
 	     ;; sub {BLK}, print {BLK} $data, but NOT `bless', `return', `tr'
 	     (or (and (looking-at "[a-zA-Z0-9_:]+[ \t\n\f]*[{#]") ; Method call syntax
-		      (not (looking-at "\\(bless\\|return\\|\\(\\(rx\\|[ms]\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\):?\\)")) ;; ss5 23.06.2006
+		      (not (looking-at "\\(bless\\|return\\|\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\):?\\)")) ;; ss5 23.06.2006
 		      (not (looking-at "\\$[a-zA-Z0-9_]+"))) ; ss5: todo: why? (topics before blockstart?); even better [$@%]?
 		 ;; sub bless::foo {}
 		 (progn
@@ -7031,7 +7042,9 @@ CHARS is a string that contains good characters to have before us (however,
 	(while (and (or (not lim)
 			(> (point) lim))
 		    (not (cperl-after-expr-p lim)))
-	  (forward-sexp -1)))
+	  (forward-sexp -1)
+	  ;; May be after $, @, $# etc of a variable
+	  (skip-chars-backward "$@%#")))
     (error nil)))
 
 (defun cperl-at-end-of-expr (&optional lim)
@@ -7951,7 +7964,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
             ;;; '("\\([@%]\\|\\$#\\)\\(\\sw+\\)"
             ;;;  (2 (cons font-lock-variable-name-face '(underline))))
 	    (cond ((featurep 'font-lock-extra)
-		   '("^[ \t]*\\(has\\|my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)\\([ \t]*,\\)?"
+		   '("^[ \t]*\\(has\\|my\\|local\\|our\\|state\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)\\([ \t]*,\\)?"
 		     (3 font-lock-variable-name-face)
 		     (4 '(another 4 nil
 				  ("\\=[ \t]*,[ \t]*\\([$@%*][a-zA-Z0-9_:]+\\)\\([ \t]*,\\)?"
@@ -8008,9 +8021,9 @@ indentation and initial hashes.  Behaves usually outside of comment."
 				   'syntax-type 'multiline))
 				(setq cperl-font-lock-multiline-start nil))))
 			(3 font-lock-variable-name-face)))))
-		  (t '("^[ \t{}]*\\(has\\|my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
+		  (t '("^[ \t{}]*\\(has\\|my\\|local\\|our\\|state\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
 		       3 font-lock-variable-name-face)))
-	    '("\\<for\\(each\\)?\\([ \t]+\\(has\\|my\\|local\\|our\\)\\)?[ \t]*\\(\\$[a-zA-Z_][a-zA-Z_0-9]*\\)[ \t]*("
+	    '("\\<for\\(each\\)?\\([ \t]+\\(has\\|my\\|local\\|our\\|state\\)\\)?[ \t]*\\(\\$[a-zA-Z_][a-zA-Z_0-9]*\\)[ \t]*("
 	      4 font-lock-variable-name-face)))
       (if (not cperl-use-v6)
           (setq
@@ -8035,6 +8048,12 @@ indentation and initial hashes.  Behaves usually outside of comment."
                            cperl-hash-face
                          cperl-array-face) ; arrays and hashes
                      font-lock-variable-name-face)) ; Just to put something
+		  ("\\(@\\|\\$#\\)\\(\\$+\\([a-zA-Z_:][a-zA-Z0-9_:]*\\|[^ \t\n]\\)\\)"
+		   (1 cperl-array-face)
+		   (2 font-lock-variable-name-face))
+		  ("\\(%\\)\\(\\$+\\([a-zA-Z_:][a-zA-Z0-9_:]*\\|[^ \t\n]\\)\\)"
+		   (1 cperl-hash-face)
+		   (2 font-lock-variable-name-face))
                   ;;("\\([smy]\\|tr\\)\\([^a-z_A-Z0-9]\\)\\(\\([^\n\\]*||\\)\\)\\2")
 		       ;;; Too much noise from \s* @s[ and friends
                   ;;("\\(\\<\\([msy]\\|tr\\)[ \t]*\\([^ \t\na-zA-Z0-9_]\\)\\|\\(/\\)\\)"
@@ -9712,7 +9731,7 @@ $~	The name of the current report format.
 \\  Creates reference to what follows, like \$var, or quotes non-\w in strings.
 \\0	Octal char, e.g. \\033.
 \\E	Case modification terminator.  See \\Q, \\L, and \\U.
-\\L	Lowercase until \\E .  See also \l, lc.
+\\L	Lowercase until \\E .  See also \\l, lc.
 \\U	Upcase until \\E .  See also \\u, uc.
 \\Q	Quote metacharacters until \\E .  See also quotemeta.
 \\a	Alarm character (octal 007).
@@ -9775,7 +9794,7 @@ endservent
 eof[([FILEHANDLE])]
 ... eq ...	String equality.
 eval(EXPR) or eval { BLOCK }
-exec(LIST)
+exec([TRUENAME] ARGV0, ARGVs)     or     exec(SHELL_COMMAND_LINE)
 exit(EXPR)
 exp(EXPR)
 fcntl(FILEHANDLE,FUNCTION,SCALAR)
@@ -9911,7 +9930,7 @@ substr(EXPR,OFFSET[,LEN])
 symlink(OLDFILE,NEWFILE)
 syscall(LIST)
 sysread(FILEHANDLE,SCALAR,LENGTH[,OFFSET])
-system(LIST)
+system([TRUENAME] ARGV0 [,ARGV])     or     system(SHELL_COMMAND_LINE)
 syswrite(FILEHANDLE,SCALAR,LENGTH[,OFFSET])
 tell[(FILEHANDLE)]
 telldir(DIRHANDLE)
@@ -10348,6 +10367,8 @@ We suppose that the regexp is scanned already."
     (goto-char pre-if)
     (forward-sexp 2)
     (forward-sexp -1)
+    ;; May be after $, @, $# etc of a variable
+    (skip-chars-backward "$@%#")
     (setq pre-A (point))
     (cperl-forward-to-end-of-expr)
     (setq post-A (point))
@@ -10949,7 +10970,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "Revision: 5.19-Pugs "))
+  (let ((v  "Revision: 5.20-Pugs "))
     (string-match ":\\s *\\([-0-9a-z.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
