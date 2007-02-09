@@ -1,3 +1,4 @@
+;;; commit bit test
 ;;; cperl-mode.el --- Perl code editing commands for Emacs
 
 ;; Copyright (C) 1985, 86, 87, 91, 92, 93, 94, 95, 96, 97, 98, 99,
