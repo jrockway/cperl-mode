@@ -7875,7 +7875,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "Macro\\|Rule\\|Block\\|Bare\\|Parametric\\|Package\\|Module\\|Class\\|Role\\|"
 	      "Object\\|Grammar\\|List\\|Lazy\\|Eager\\|"
 	      "Real\\|Scalar\\|int8\\|Socket\\|"
-	      "rw\\|cached\\|signature\\|parsed\\|inline\\|"
+	      "rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|inline\\|"
 	      "tighter\\|looser\\|equiv\\|export"
 	      "\\)\\>") 2 'font-lock-type-face)
 	    ;; In what follows we use `other' style
