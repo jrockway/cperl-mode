@@ -1469,7 +1469,7 @@
 ;;;   * file suffix .p6
 ;;;
 ;;;  Highlighting new keywords/builtins:
-;;;    class, role, 
+;;;    class, role, grammar, rule, 
 ;;;    has, state, does,
 ;;;    say,
 ;;;    rx,
@@ -2097,7 +2097,7 @@ This way enabling/disabling of menu items is more correct."
    (string-match "\\.[Pp]6$" (buffer-file-name))
    (save-excursion
      (beginning-of-buffer)
-     (search-forward-regexp "^[\t ]*\\(use v6\\|\\(class\\|role\\)[\t ]+.*;\\)" 320 t))))
+     (search-forward-regexp "^[\t ]*\\(use v6\\|\\(class\\|role\\|grammar\\|rule\\)[\t ]+.*;\\)" 320 t))))
 
 (if cperl-can-font-lock
     (progn
@@ -6965,7 +6965,7 @@ statement would start; thus the block in ${func()} does not count."
 		   (save-excursion
 		    (forward-sexp -1)
 		    ;; else {}     but not    else::func {}
-		    (or (and (looking-at "\\(else\\|class\\|role\\|continue\\|grep\\|map\\|gather\\|async\\|atomically\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|START\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>")
+		    (or (and (looking-at "\\(else\\|class\\|role\\|grammar\\|rule\\|continue\\|grep\\|map\\|gather\\|async\\|atomically\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|START\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>")
 			     (not (looking-at "\\(\\sw\\|_\\)+::")))
 			;; sub f {}
 			(progn
@@ -6982,7 +6982,7 @@ statement would start; thus the block in ${func()} does not count."
 	      (save-excursion ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
 		;; perl6: todo: correct in P5? Then use-v6'ify!
 		(beginning-of-line)
-		(looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|class\\|role\\|gather\\|async\\|atomically\\|given\\|wh\\(ile\\|en\\)\\|loop\\|for\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>"))))
+		(looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|class\\|role\\|grammar\\|rule\\|gather\\|async\\|atomically\\|given\\|wh\\(ile\\|en\\)\\|loop\\|for\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>"))))
       (error nil))))
 
 (defun cperl-after-expr-p (&optional lim chars test)
@@ -7886,19 +7886,19 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
 	      ;; "AUTOLOAD" "BEGIN" "CHECK" "DESTROY" "END" "INIT" "__END__" "async" "atomically" "chomp"
 	      ;; "chop" "class" "coro" "defined" "delete" "do" "each" "else" "elsif"
-	      ;; "eval" "exists" "for" "foreach" "format" "gather" "goto"
+	      ;; "eval" "exists" "for" "foreach" "format" "gather" "grammar" "goto"
 	      ;; "grep" "has" "if" "keys" "kv" "last" "local" "loop" "map" "my" "next"
 	      ;; "no" "our" "pairs" "package" "pop" "pos" "pick" "print" "printf" "push"
-	      ;; "q" "qq" "qw" "qx" "redo" "rx" "reduce" "return" "role" "say" "scalar" "shift"
+	      ;; "q" "qq" "qw" "qx" "redo" "rx" "reduce" "return" "role" "rule" "say" "scalar" "shift"
 	      ;; "sort" "splice" "split" "study" "state" "sum" "take" "type" "sub" "tie" "tr"
 	      ;; "undef" "uniq" "unless" "unshift" "untie" "until" "uniq" "use"
 	      ;; "while" "y" "zip"
 	      "AUTOLOAD\\|BEGIN\\|CHECK\\|a\\(sync\\|tomically\\)\\|c\\(lass\\|ho\\(p\\|mp\\)\\|oro\\)\\|d\\(e\\(fined\\|lete\\)\\|"
 	      "o\\)\\|DESTROY\\|e\\(ach\\|val\\|xists\\|ls\\(e\\|if\\)\\)\\|"
-	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(ather\\|rep\\|oto\\)\\|has\\|INIT\\|if\\|k\\(eys\\|v\\)\\|"
+	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(ather\\|r\\(ep\\|ammar\\)\\|oto\\)\\|has\\|INIT\\|if\\|k\\(eys\\|v\\)\\|"
 	      "l\\(ast\\|o\\(cal\\|op\\)\\)\\|m\\(a\\(p\\|x\\)\\|in\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
 	      "p\\(a\\(ckage\\|irs\\)\\|ick\\|rint\\(\\|f\\)\\|ush\\|o\\(p\\|s\\)\\)\\|"
-	      "q\\(\\|q\\|w\\|x\\|r\\)\\|rx\\|re\\(turn\\|d\\(o\\|uce\\)\\)\\|role\\|s\\(ay\\|pli\\(ce\\|t\\)\\|"
+	      "q\\(\\|q\\|w\\|x\\|r\\)\\|rx\\|re\\(turn\\|d\\(o\\|uce\\)\\)\\|r\\(o\\|u\\)le\\|s\\(ay\\|pli\\(ce\\|t\\)\\|"
 	      "calar\\|t\\(udy\\|ate\\)\\|u\\(b\\|m\\)\\|hift\\|ort\\)\\|t\\(r\\|ie\\|ype\\|aken?\\)\\|"
 	      "u\\(se\\|n\\(iq\\|shift\\|ti\\(l\\|e\\)\\|def\\|less\\)\\)\\|"
 	      "while\\|y\\|zip\\|__\\(END\\|DATA\\)__" ;__DATA__ added manually
@@ -7937,7 +7937,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			 (if (eq (char-after (cperl-1- (match-end 0))) ?\{ )
 			     'font-lock-function-name-face
 			   'font-lock-variable-name-face))))
-	    '("\\<\\(package\\|class\\|role\\|require\\|use\\|import\\|no\\|bootstrap\\)[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t;]" ; require A if B;
+	    '("\\<\\(package\\|class\\|role\\|grammar\\|rule\\|require\\|use\\|import\\|no\\|bootstrap\\)[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t;]" ; require A if B;
 	      2 font-lock-function-name-face)
 	    '("^[ \t]*format[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t]*=[ \t]*$"
 	      1 font-lock-function-name-face)
@@ -8772,9 +8772,9 @@ in subdirectories too."
 		;;       1=fullname  2=package?             3=name                       4=proto?             5=attrs? (VERY APPROX!)
 		"/\\<sub[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\(([^()]*)[ \t]*\\)?\\([ \t]*:[^#{;]*\\)?\\([{#]\\|$\\)/\\3/"
 		"-r"
-		"/\\<\\(package\\|class\\|role\\)[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\([#;]\\|$\\)/\\2/"; perl6
+		"/\\<\\(package\\|class\\|role\\|grammar\\|rule\\)[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\([#;]\\|$\\)/\\2/"; perl6
 		"-r"
-		"/\\<\\(package\\|class\\|role\\)[ \\t]*;/\\1;/"))
+		"/\\<\\(package\\|class\\|role\\|grammar\\|rule\\)[ \\t]*;/\\1;/"))
 	res)
     (if add (setq args (cons "-a" args)))
     (or files (setq files (list buffer-file-name)))
@@ -8985,7 +8985,7 @@ by CPerl."
 	      (progn
 		(insert (elt elt 3)
 			127
-			(if (string-match "^\\(package\\|class\\|role\\) " (car elt)) ; perl6
+			(if (string-match "^\\(package\\|class\\|role\\|grammar\\|rule\\) " (car elt)) ; perl6
 			    (substring (car elt) 8)
 			  (car elt) )
 			1
@@ -9122,7 +9122,7 @@ Use as
 (defvar cperl-tags-hier-regexp-list
   (concat
    "^\\("
-      "\\(package\\|class\\|role\\)\\>"
+      "\\(package\\|class\\|role\\|grammar\\|rule\\)\\>"
      "\\|"
       "sub\\>[^\n]+::"
      "\\|"
