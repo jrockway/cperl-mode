@@ -6976,7 +6976,7 @@ statement would start; thus the block in ${func()} does not count."
 				 (looking-at "\\(coro\\|sub\\|method\\|submethod\\)[ \t\n\f#]")))))) ; perl6
 		   (save-excursion ; perl6: return Type {} / is rw {} / is cached {} / ...
 		     (forward-sexp -2)
-		     (looking-at "\\(returns\\|of\\|is\\|does[ \t]\\(rw\\|cached\\|signature\\|parsed\\|inline\\|tighter\\|looser\\|equiv\\|export\\)\\|will[ \t]do\\)\\>")))
+		     (looking-at "\\(returns\\|of\\|is\\|does[ \t]\\(rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|inline\\|tighter\\|looser\\|equiv\\|export\\|assoc\\)\\|will[ \t]do\\)\\>")))
 		;; What preceeds is not word...  XXXX Last statement in sub???
 		(cperl-after-expr-p lim))
 	      (save-excursion ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
