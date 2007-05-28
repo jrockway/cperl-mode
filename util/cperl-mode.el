@@ -6913,29 +6913,34 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 (defun cperl-block-p ()		   ; Do not C-M-q !  One string contains ";" !
   ;; Positions is before ?\{.  Checks whether it starts a block.
   ;; No save-excursion!  This is more a distinguisher of a block/hash ref...
-  (cperl-backward-to-noncomment (point-min))
-  (or (memq (preceding-char) (append ";){}$@&%\C-@" nil)) ; Or label!  \C-@ at bobp
-					; Label may be mixed up with `$blah :'
-      (save-excursion (cperl-after-label))
-      (get-text-property (cperl-1- (point)) 'attrib-group)
-      (and (memq (char-syntax (preceding-char)) '(?w ?_))
-	   (progn
-	     (backward-sexp)
-	     ;; sub {BLK}, print {BLK} $data, but NOT `bless', `return', `tr'
-	     (or (and (looking-at "[a-zA-Z0-9_:]+[ \t\n\f]*[{#]") ; Method call syntax
-		      (not (looking-at "\\(bless\\|return\\|\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\):?\\)")) ;; perl6 23.06.2006
-		      (not (looking-at "\\$[a-zA-Z0-9_]+"))) ; perl6: todo: why? (topics before blockstart?); even better [$@%]?
-		 ;; sub bless::foo {}
-		 (progn
-		   (cperl-backward-to-noncomment (point-min))
-		   (and (eq (preceding-char) ?b)
-			(progn
-			  (forward-sexp -1)
-			  (looking-at "\\(coro\\|sub\\|method\\|submethod\\)[ \t\n\f#]"))))))) ; perl6
-      (if cperl-use-v6
-	  (progn ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
-	    (beginning-of-line)
-	    (looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|given\\|wh\\(ile\\|en\\)\\|for\\|loop\\)\\>")))))
+  (or
+   (and ; perl6: it's never a hash if whitespace before brace
+    (cond (cperl-use-v6))
+    (memq (preceding-char) (append " \t" nil)))
+   (progn
+     (cperl-backward-to-noncomment (point-min))
+     (or (memq (preceding-char) (append ";){}$@&%\C-@" nil)) ; Or label!  \C-@ at bobp
+                                        ; Label may be mixed up with `$blah :'
+         (save-excursion (cperl-after-label))
+         (get-text-property (cperl-1- (point)) 'attrib-group)
+         (and (memq (char-syntax (preceding-char)) '(?w ?_))
+              (progn
+                (backward-sexp)
+                ;; sub {BLK}, print {BLK} $data, but NOT `bless', `return', `tr'
+                (or (and (looking-at "[a-zA-Z0-9_:]+[ \t\n\f]*[{#]") ; Method call syntax
+                         (not (looking-at "\\(bless\\|return\\|\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\):?\\)")) ;; perl6 23.06.2006
+                         (not (looking-at "\\$[a-zA-Z0-9_]+"))) ; perl6: todo: why? (topics before blockstart?); even better [$@%]?
+                    ;; sub bless::foo {}
+                    (progn
+                      (cperl-backward-to-noncomment (point-min))
+                      (and (eq (preceding-char) ?b)
+                           (progn
+                             (forward-sexp -1)
+                             (looking-at "\\(coro\\|sub\\|method\\|submethod\\)[ \t\n\f#]"))))))) ; perl6
+         (if cperl-use-v6
+             (progn ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
+               (beginning-of-line)
+               (looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|given\\|wh\\(ile\\|en\\)\\|for\\|loop\\)\\>")))))))
 
 ;;; What is the difference of (cperl-after-block-p lim t) and (cperl-block-p)?
 ;;; No save-excursion; condition-case ...  In (cperl-block-p) the block
