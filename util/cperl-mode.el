@@ -6974,9 +6974,9 @@ statement would start; thus the block in ${func()} does not count."
 			       (progn
 				 (forward-sexp -1)
 				 (looking-at "\\(coro\\|sub\\|method\\|submethod\\)[ \t\n\f#]")))))) ; perl6
-		   (save-excursion ; perl6: return Type {} / is rw {} / is cached {} / ...
+		   (save-excursion ; perl6: returns Type {} / is rw {} / is cached {} / ...
 		     (forward-sexp -2)
-		     (looking-at "\\(returns\\|of\\|is\\|does[ \t]\\(rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|inline\\|tighter\\|looser\\|equiv\\|export\\|assoc\\)\\|will[ \t]do\\)\\>")))
+		     (looking-at "\\(returns\\|of\\|is\\|does[ \t]\\(rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|inline\\|tighter\\|looser\\|equiv\\|export\\|assoc\\|extended\\|deep\\|also\\)\\|will[ \t]do\\)\\>")))
 		;; What preceeds is not word...  XXXX Last statement in sub???
 		(cperl-after-expr-p lim))
 	      (save-excursion ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
@@ -7876,7 +7876,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "Object\\|Grammar\\|List\\|Lazy\\|Eager\\|"
 	      "Real\\|Scalar\\|int8\\|Socket\\|"
 	      "rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|inline\\|"
-	      "tighter\\|looser\\|equiv\\|export"
+	      "tighter\\|looser\\|equiv\\|export\\|extended\\|deep\\|also"
 	      "\\)\\>") 2 'font-lock-type-face)
 	    ;; In what follows we use `other' style
 	    ;; for nonoverwritable builtins
