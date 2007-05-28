@@ -5308,7 +5308,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\\\\\(['`\"($]\\)"	; BACKWACKED something-hairy
 		;; 1+6+2+1+1+6+1+1+1+1=21 extra () before this: ; perl6
 		"\\|"
-		"\\<\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)\\>:?")            ; perl6: rx
+		"\\<\\(\\(rx\\|[ms]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)\\>:?")            ; perl6: rx
 		;; 1+6+2+1+1+6+1+1+1+1+7=28 extra () before this: ; perl6
 	     ""))))
     (unwind-protect
