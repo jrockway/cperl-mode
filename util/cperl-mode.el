@@ -6552,7 +6552,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 							 "\\)*"
 							 ;; XXXX: what if u is delim?
 							 "\\|"
-							 "[)^|$.*?+]"
+							 "[)^|$.*?+]" ;; perl6: HIER SPECIAL VARIABLES??
 							 "\\|"
 							 "{[0-9]+}"
 							 "\\|"
@@ -6981,7 +6981,7 @@ statement would start; thus the block in ${func()} does not count."
 				 (looking-at "\\(coro\\|sub\\|method\\|submethod\\)[ \t\n\f#]")))))) ; perl6
 		   (save-excursion ; perl6: returns Type {} / is rw {} / is cached {} / ...
 		     (forward-sexp -2)
-		     (looking-at "\\(returns\\|of\\|is\\|does[ \t]\\(rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|inline\\|tighter\\|looser\\|equiv\\|export\\|assoc\\|extended\\|deep\\|also\\)\\|will[ \t]do\\)\\>")))
+		     (looking-at "\\(returns\\|of\\|is\\|does[ \t]\\(rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|reparsed\\|inline\\|tighter\\|looser\\|equiv\\|export\\|assoc\\|extended\\|deep\\|also\\)\\|will[ \t]do\\)\\>")))
 		;; What preceeds is not word...  XXXX Last statement in sub???
 		(cperl-after-expr-p lim))
 	      (save-excursion ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
@@ -7880,7 +7880,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "Macro\\|Rule\\|Block\\|Bare\\|Parametric\\|Package\\|Module\\|Class\\|Role\\|"
 	      "Object\\|Grammar\\|List\\|Lazy\\|Eager\\|"
 	      "Real\\|Scalar\\|int8\\|Socket\\|"
-	      "rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|inline\\|"
+	      "rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|reparsed\\|inline\\|"
 	      "tighter\\|looser\\|equiv\\|export\\|extended\\|deep\\|also"
 	      "\\)\\>") 2 'font-lock-type-face)
 	    ;; In what follows we use `other' style
@@ -8082,7 +8082,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
                      cperl-hash-face
                    cperl-array-face)
                  t)                   ; arrays and hashes
-				("\\(\\([$@]+\\)[a-zA-Z_:.^*+?=!][a-zA-Z0-9_:]*\\)\\([[{]\\)" ; perl6: Twigils %.name %:name %^name, %*name, %+name, %?name, %=name, %!name
+				("\\(\\([$@]+\\)[a-zA-Z_:.^*+?=!][a-zA-Z0-9_:]*\\)\\([[{]\\)" ; perl6: Twigils $.name $:name $^name, $*name, $+name, $?name, $=name, $!name
 				 1
 				 (if (= (- (match-end 2) (match-beginning 2)) 1)
 					 (if (eq (char-after (match-beginning 3)) ?{)
@@ -8094,7 +8094,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	  (if cperl-highlight-variables-indiscriminately
 	      (setq t-font-lock-keywords-1
 		    (append t-font-lock-keywords-1
-			    (list '("[$*][{:.^*+?=!]?\\(\\sw+\\)" 1 ; perl6: Twigils %.name %:name %^name, %*name, %+name, %?name, %=name, %!name
+			    (list '("[$*][{:.^*+?=!]?\\(\\sw+\\)" 1 ; perl6: Twigils $.name $:name $^name, $*name, $+name, $?name, $=name, $!name
 				    font-lock-variable-name-face)))))
 	  (setq perl-font-lock-keywords-1
 		(if cperl-syntaxify-by-font-lock
