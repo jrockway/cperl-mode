@@ -6913,10 +6913,11 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 (defun cperl-block-p ()		   ; Do not C-M-q !  One string contains ";" !
   ;; Positions is before ?\{.  Checks whether it starts a block.
   ;; No save-excursion!  This is more a distinguisher of a block/hash ref...
-  (or
-   (and ; perl6: it's never a hash if whitespace before brace
-    (cond (cperl-use-v6))
-    (memq (preceding-char) (append " \t" nil)))
+; ss5: 2007-08-27 seems not to work
+;  (or
+;   (and ; perl6: it's never a hash if whitespace before brace
+;    (cond (cperl-use-v6))
+;    (memq (preceding-char) (append " \t" nil)))
    (progn
      (cperl-backward-to-noncomment (point-min))
      (or (memq (preceding-char) (append ";){}$@&%\C-@" nil)) ; Or label!  \C-@ at bobp
@@ -6940,7 +6941,10 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
          (if cperl-use-v6
              (progn ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
                (beginning-of-line)
-               (looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|given\\|wh\\(ile\\|en\\)\\|for\\|loop\\)\\>")))))))
+               (looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|given\\|wh\\(ile\\|en\\)\\|for\\|loop\\)\\>")))))
+; corresponding to ss5: 2007-08-27 seems not to work
+;)
+)
 
 ;;; What is the difference of (cperl-after-block-p lim t) and (cperl-block-p)?
 ;;; No save-excursion; condition-case ...  In (cperl-block-p) the block
