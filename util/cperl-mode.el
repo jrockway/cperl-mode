@@ -6686,7 +6686,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 										"\\=[0-9a-fA-F][0-9a-fA-F]?\\|\\={[0-9a-fA-F]+}"
 										(1- e) 'to-end))
 								  (and (memq qtag (append "pPN" nil))
-									   (re-search-forward "\\={[^{}]+}\\|."
+									   (re-search-forward "\\={[^{}]+}\\|." ;; ss5: hier interessant für $' und aehnliche Spezialvariablen?
 														  (1- e) 'to-end))
 								  (eq (char-syntax qtag) ?w))
 							  (cperl-postpone-fontification
@@ -6913,11 +6913,10 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 (defun cperl-block-p ()		   ; Do not C-M-q !  One string contains ";" !
   ;; Positions is before ?\{.  Checks whether it starts a block.
   ;; No save-excursion!  This is more a distinguisher of a block/hash ref...
-; ss5: 2007-08-27 seems not to work
-;  (or
-;   (and ; perl6: it's never a hash if whitespace before brace
-;    (cond (cperl-use-v6))
-;    (memq (preceding-char) (append " \t" nil)))
+  (or
+   (and ; perl6: it's never a hash if whitespace before brace (not yet perfect)
+    (cond (cperl-use-v6))
+    (memq (preceding-char) (append " \t" nil)))
    (progn
      (cperl-backward-to-noncomment (point-min))
      (or (memq (preceding-char) (append ";){}$@&%\C-@" nil)) ; Or label!  \C-@ at bobp
@@ -6941,9 +6940,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
          (if cperl-use-v6
              (progn ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
                (beginning-of-line)
-               (looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|given\\|wh\\(ile\\|en\\)\\|for\\|loop\\)\\>")))))
-; corresponding to ss5: 2007-08-27 seems not to work
-;)
+               (looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|given\\|wh\\(ile\\|en\\)\\|for\\|loop\\)\\>"))))))
 )
 
 ;;; What is the difference of (cperl-after-block-p lim t) and (cperl-block-p)?
@@ -7874,12 +7871,15 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
 	      ;; the builtin types:
 	      ;; bit" "int" "str" "num" "ref" "bool" "Bit" "Int" "Str" "Num" "Ref"
+		  ;; Complex Exception Seq Range Set Junction Pair Mapping Signature Capture "
+          ;; Bag\\|Mapping\\|Blob\\|KeyHash\\|KeySet\\|KeyBag\\|Buf\\|Regex\\|Match\\|Any\\|"
 	      ;; Bool" "Array" "Hash" "IO" "Code" "Routine" "Sub" "Method" "Submethod"
 	      ;; Macro" "Rule" "Block" "Bare" "Parametric" "Package" "Module" "Class" "Role"
 	      ;; Object" "Grammar" "List" "Lazy" "Eager" 
 	      ;; Real" "Scalar" "int8" "Socket"
 	      "bit\\|int\\|str\\|num\\|ref\\|bool\\|Bit\\|Int\\|Str\\|Num\\|Ref\\|"
 		  "Complex\\|Exception\\|Seq\\|Range\\|Set\\|Junction\\|Pair\\|Mapping\\|Signature\\|Capture\\|"
+          "Bag\\|Mapping\\|Blob\\|KeyHash\\|KeySet\\|KeyBag\\|Buf\\|Regex\\|Match\\|Any\\|"
 	      "Bool\\|Array\\|Hash\\|IO\\|Code\\|Routine\\|Sub\\|Method\\|Submethod\\|"
 	      "Macro\\|Rule\\|Block\\|Bare\\|Parametric\\|Package\\|Module\\|Class\\|Role\\|"
 	      "Object\\|Grammar\\|List\\|Lazy\\|Eager\\|"
