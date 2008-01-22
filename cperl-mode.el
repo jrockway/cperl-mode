@@ -7639,6 +7639,7 @@ $~	The name of the current report format.
 ... = ...	Assignment.
 ... == ...	Numeric equality.
 ... =~ ...	Search pattern, substitution, or translation
+... ~~ ..       Smart match
 ... > ...	Numeric greater than.
 ... >= ...	Numeric greater than or equal to.
 ... >> ...	Bitwise shift right.
@@ -7700,6 +7701,7 @@ cos(EXPR)
 crypt(PLAINTEXT,SALT)
 dbmclose(%HASH)
 dbmopen(%HASH,DBNAME,MODE)
+default { ... } default case for given/when block
 defined(EXPR)
 delete($HASH{KEY})
 die(LIST)
@@ -7752,6 +7754,7 @@ getservbyport(PORT,PROTO)
 getservent
 getsockname(SOCKET)
 getsockopt(SOCKET,LEVEL,OPTNAME)
+given (EXPR) { [ when (EXPR) { ... } ]+ [ default { ... } ]? } 
 gmtime(EXPR)
 goto LABEL
 ... gt ...	String greater than.
