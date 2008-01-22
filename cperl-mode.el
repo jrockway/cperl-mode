@@ -1,7 +1,7 @@
 ;;; cperl-mode.el --- Perl code editing commands for Emacs
 
 ;; Copyright (C) 1985, 1986, 1987, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-;; 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007
+;; 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008
 ;;     Free Software Foundation, Inc.
 
 ;; Author: Ilya Zakharevich and Bob Olson
@@ -78,9 +78,8 @@
       (condition-case nil
 	  (require 'man)
 	(error nil))
-      (defconst cperl-xemacs-p (string-match "XEmacs\\|Lucid" emacs-version))
       (defvar cperl-can-font-lock
-	(or cperl-xemacs-p
+	(or (featurep 'xemacs)
 	    (and (boundp 'emacs-major-version)
 		 (or window-system
 		     (> emacs-major-version 20)))))
@@ -131,14 +130,14 @@
 		 (cperl-make-face ,arg ,descr))
 	     (or (boundp (quote ,arg)) ; We use unquoted variants too
 		 (defvar ,arg (quote ,arg) ,descr))))
-      (if cperl-xemacs-p
+      (if (featurep 'xemacs)
 	  (defmacro cperl-etags-snarf-tag (file line)
 	    `(progn
                (beginning-of-line 2)
                (list ,file ,line)))
 	(defmacro cperl-etags-snarf-tag (file line)
 	  `(etags-snarf-tag)))
-      (if cperl-xemacs-p
+      (if (featurep 'xemacs)
 	  (defmacro cperl-etags-goto-tag-location (elt)
 	    ;;(progn
             ;; (switch-to-buffer (get-file-buffer (elt ,elt 0)))
@@ -151,10 +150,8 @@
 	(defmacro cperl-etags-goto-tag-location (elt)
 	  `(etags-goto-tag-location ,elt))))
 
-(defconst cperl-xemacs-p (string-match "XEmacs\\|Lucid" emacs-version))
-
 (defvar cperl-can-font-lock
-  (or cperl-xemacs-p
+  (or (featurep 'xemacs)
       (and (boundp 'emacs-major-version)
 	   (or window-system
 	       (> emacs-major-version 20)))))
@@ -234,12 +231,18 @@ for constructs with multiline if/unless/while/until/for/foreach condition."
   :type 'integer
   :group 'cperl-indentation-details)
 
-;; Is is not unusual to put both perl-indent-level and
+;; Is is not unusual to put both things like perl-indent-level and
 ;; cperl-indent-level in the local variable section of a file. If only
 ;; one of perl-mode and cperl-mode is in use, a warning will be issued
-;; about the variable. Autoload this here, so that no warning is
+;; about the variable. Autoload these here, so that no warning is
 ;; issued when using either perl-mode or cperl-mode.
 ;;;###autoload(put 'cperl-indent-level 'safe-local-variable 'integerp)
+;;;###autoload(put 'cperl-brace-offset 'safe-local-variable 'integerp)
+;;;###autoload(put 'cperl-continued-brace-offset 'safe-local-variable 'integerp)
+;;;###autoload(put 'cperl-label-offset 'safe-local-variable 'integerp)
+;;;###autoload(put 'cperl-continued-statement-offset 'safe-local-variable 'integerp)
+;;;###autoload(put 'cperl-extra-newline-before-brace 'safe-local-variable 'booleanp)
+;;;###autoload(put 'cperl-merge-trailing-else 'safe-local-variable 'booleanp)
 
 (defcustom cperl-lineup-step nil
   "*`cperl-lineup' will always lineup at multiple of this number.
@@ -458,7 +461,7 @@ Font for POD headers."
   :group 'cperl-faces)
 
 ;;; Some double-evaluation happened with font-locks...  Needed with 21.2...
-(defvar cperl-singly-quote-face cperl-xemacs-p)
+(defvar cperl-singly-quote-face (featurep 'xemacs))
 
 (defcustom cperl-invalid-face 'underline
   "*Face for highlighting trailing whitespace."
@@ -1011,7 +1014,7 @@ In regular expressions (except character classes):
 (defmacro cperl-define-key (emacs-key definition &optional xemacs-key)
   `(define-key cperl-mode-map
      ,(if xemacs-key
-	  `(if cperl-xemacs-p ,xemacs-key ,emacs-key)
+	  `(if (featurep 'xemacs) ,xemacs-key ,emacs-key)
 	emacs-key)
      ,definition))
 
@@ -1024,7 +1027,7 @@ In regular expressions (except character classes):
      (setq cperl-del-back-ch (aref cperl-del-back-ch 0)))
 
 (defun cperl-mark-active () (mark))	; Avoid undefined warning
-(if cperl-xemacs-p
+(if (featurep 'xemacs)
     (progn
       ;; "Active regions" are on: use region only if active
       ;; "Active regions" are off: use region unconditionally
@@ -1040,7 +1043,7 @@ In regular expressions (except character classes):
 (defun cperl-putback-char (c)		; Emacs 19
   (set 'unread-command-events (list c))) ; Avoid undefined warning
 
-(if cperl-xemacs-p
+(if (featurep 'xemacs)
     (defun cperl-putback-char (c)	; XEmacs >= 19.12
       (setq unread-command-events (list (eval '(character-to-event c))))))
 
@@ -1192,7 +1195,7 @@ versions of Emacs."
 		      ;;(concat (char-to-string help-char) "v") ; does not work
 		      'cperl-get-help
 		      [(control c) (control h) v]))
-  (if (and cperl-xemacs-p
+  (if (and (featurep 'xemacs)
 	   (<= emacs-minor-version 11) (<= emacs-major-version 19))
       (progn
 	;; substitute-key-definition is usefulness-deenhanced...
@@ -1513,6 +1516,8 @@ the last)."
      2 3))
   "Alist that specifies how to match errors in perl output.")
 
+(defvar compilation-error-regexp-alist)
+
 ;;;###autoload
 (defun cperl-mode ()
   "Major mode for editing Perl code.
@@ -1744,7 +1749,7 @@ or as help on variables `cperl-tips', `cperl-problems',
   (setq paragraph-separate paragraph-start)
   (make-local-variable 'paragraph-ignore-fill-prefix)
   (setq paragraph-ignore-fill-prefix t)
-  (if cperl-xemacs-p
+  (if (featurep 'xemacs)
     (progn
       (make-local-variable 'paren-backwards-message)
       (set 'paren-backwards-message t)))
@@ -1793,9 +1798,11 @@ or as help on variables `cperl-tips', `cperl-problems',
   (set 'vc-sccs-header cperl-vc-sccs-header)
   ;; This one is obsolete...
   (make-local-variable 'vc-header-alist)
-  (set 'vc-header-alist (or cperl-vc-header-alist ; Avoid warning
-			    `((SCCS ,(car cperl-vc-sccs-header))
-                              (RCS ,(car cperl-vc-rcs-header)))))
+  (with-no-warnings
+   (set 'vc-header-alist (or cperl-vc-header-alist ; Avoid warning
+			     `((SCCS ,(car cperl-vc-sccs-header))
+			       (RCS ,(car cperl-vc-rcs-header)))))
+   )
   (cond ((boundp 'compilation-error-regexp-alist-alist);; xemacs 20.x
 	 (make-local-variable 'compilation-error-regexp-alist-alist)
 	 (set 'compilation-error-regexp-alist-alist
@@ -1835,7 +1842,7 @@ or as help on variables `cperl-tips', `cperl-problems',
 	(or (boundp 'font-lock-unfontify-region-function)
 	    (set 'font-lock-unfontify-region-function
 		 'font-lock-default-unfontify-region))
-	(unless cperl-xemacs-p		; Our: just a plug for wrong font-lock
+	(unless (featurep 'xemacs)		; Our: just a plug for wrong font-lock
 	  (make-local-variable 'font-lock-unfontify-region-function)
 	  (set 'font-lock-unfontify-region-function ; not present with old Emacs
 	       'cperl-font-lock-unfontify-region-function))
@@ -4580,7 +4587,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 					   (setq qtag "Can't find })")))
 				  (progn
 				    (goto-char (1- e))
-				    (message qtag))
+				    (message "%s" qtag))
 				(cperl-postpone-fontification
 				 (1- tag) (1- (point))
 				 'face font-lock-variable-name-face)
@@ -5854,7 +5861,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	   (and (fboundp 'turn-on-font-lock) ; Check for newer font-lock
 		;; not yet as of XEmacs 19.12, works with 21.1.11
 		(or
-		 (not cperl-xemacs-p)
+		 (not (featurep 'xemacs))
 		 (string< "21.1.9" emacs-version)
 		 (and (string< "21.1.10" emacs-version)
 		      (string< emacs-version "21.1.2")))
@@ -6015,7 +6022,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	  ;;    (defconst cperl-nonoverridable-face
 	  ;;	'cperl-nonoverridable-face
 	  ;;	"Face to use for data types from another group."))
-	  ;;(if (not cperl-xemacs-p) nil
+	  ;;(if (not (featurep 'xemacs)) nil
 	  ;;  (or (boundp 'font-lock-comment-face)
 	  ;;	(defconst font-lock-comment-face
 	  ;;	  'font-lock-comment-face
@@ -6964,7 +6971,7 @@ Use as
     (save-excursion
       (cond (inbuffer nil)		; Already there
 	    ((file-exists-p tags-file-name)
-	     (if cperl-xemacs-p
+	     (if (featurep 'xemacs)
 		 (visit-tags-table-buffer)
 	       (visit-tags-table-buffer tags-file-name)))
 	    (t (set-buffer (find-file-noselect tags-file-name))))
@@ -7100,7 +7107,7 @@ One may build such TAGS files from CPerl mode menu."
 	    pack name cons1 to l1 l2 l3 l4 b)
 	;; (setq cperl-hierarchy '(() () ())) ; Would write into '() later!
 	(setq cperl-hierarchy (list l1 l2 l3))
-	(if cperl-xemacs-p		; Not checked
+	(if (featurep 'xemacs)		; Not checked
 	    (progn
 	      (or tags-file-name
 		  ;; Does this work in XEmacs?
@@ -8451,7 +8458,7 @@ the appropriate statement modifier."
 				  'variable-documentation))))
 	 (manual-program (if is-func "perldoc -f" "perldoc")))
     (cond
-     (cperl-xemacs-p
+     ((featurep 'xemacs)
       (let ((Manual-program "perldoc")
 	    (Manual-switches (if is-func (list "-f"))))
 	(manual-entry word)))
@@ -8493,7 +8500,7 @@ the appropriate statement modifier."
   (interactive)
   (require 'man)
   (cond
-   (cperl-xemacs-p
+   ((featurep 'xemacs)
     (let ((Manual-program "perldoc"))
       (manual-entry buffer-file-name)))
    (t
@@ -8688,6 +8695,8 @@ start with default arguments, then refine the slowdown regions."
       (setq delta (- (- tt (setq tt (funcall timems)))) tot (+ tot delta))
       (message "to %s:%6s,%7s" l delta tot))
     tot))
+
+(defvar font-lock-cache-position)
 
 (defun cperl-emulate-lazy-lock (&optional window-size)
   "Emulate `lazy-lock' without `condition-case', so `debug-on-error' works.
