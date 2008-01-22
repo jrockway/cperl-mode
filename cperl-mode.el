@@ -1770,7 +1770,7 @@ or as help on variables `cperl-tips', `cperl-problems',
 ;;;	  (cperl-after-sub-regexp 'named nil) ; 8=name 11=proto 14=attr-start
 ;;;	  cperl-maybe-white-and-comment-rex	; 15=pre-block
   (setq defun-prompt-regexp
-	(concat "^[ \t]*\\(sub"
+	(concat "^[ \t]*\\(\\(?:sub\\|method\\)"
 		(cperl-after-sub-regexp 'named 'attr-groups)
 		"\\|"			; per toke.c
 		"\\(BEGIN\\|CHECK\\|INIT\\|END\\|AUTOLOAD\\|DESTROY\\)"
@@ -3704,7 +3704,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\([?/<]\\)"	; /blah/ or ?blah? or <file*glob>
 		"\\|"
 		;; 1+6+2+1+1=11 extra () before this
-		"\\<sub\\>"		;  sub with proto/attr
+		"\\<\\(?:sub\\|method\\)\\>"		;  sub with proto/attr
 		"\\("
 		   cperl-white-and-comment-rex
 		   "\\(::[a-zA-Z_:'0-9]*\\|[a-zA-Z_'][a-zA-Z_:'0-9]*\\)\\)?" ; name
@@ -3717,7 +3717,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\|"
 		;; 1+6+2+1+1+6+1=18 extra () before this (old pack'var syntax;
 		;; we do not support intervening comments...):
-		"\\(\\<sub[ \t\n\f]+\\|[&*$@%]\\)[a-zA-Z0-9_]*'"
+		"\\(\\<\\(?:sub\\|method\\)[ \t\n\f]+\\|[&*$@%]\\)[a-zA-Z0-9_]*'"
 		;; 1+6+2+1+1+6+1+1=19 extra () before this:
 		"\\|"
 		"__\\(END\\|DATA\\)__"	; __END__ or __DATA__
@@ -3914,7 +3914,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 						(progn
 						  (forward-sexp -2)
 						  (not
-						   (looking-at "\\(printf?\\|system\\|exec\\|sort\\)\\>")))
+						   (looking-at "\\(printf?\\|say\\|system\\|exec\\|sort\\)\\>")))
 						(error t)))))))
 				   (error nil))) ; func(<<EOF)
 			       (and (not (match-beginning 6)) ; Empty
@@ -4101,7 +4101,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 					      (not (memq (preceding-char)
 							 '(?$ ?@ ?& ?%)))
 					      (looking-at
-					       "\\(while\\|if\\|unless\\|until\\|and\\|or\\|not\\|xor\\|split\\|grep\\|map\\|print\\)\\>")))))
+					       "\\(while\\|if\\|unless\\|until\\|and\\|or\\|not\\|xor\\|split\\|grep\\|map\\|print\\|say\\)\\>")))))
 				    (and (eq (preceding-char) ?.)
 					 (eq (char-after (- (point) 2)) ?.))
 				    (bobp))
@@ -4793,7 +4793,7 @@ statement would start; thus the block in ${func()} does not count."
 		  (save-excursion
 		    (forward-sexp -1)
 		    ;; else {}     but not    else::func {}
-		    (or (and (looking-at "\\(else\\|continue\\|grep\\|map\\|BEGIN\\|END\\|CHECK\\|INIT\\)\\>")
+		    (or (and (looking-at "\\(else\\|continue\\|grep\\|map\\|BEGIN\\|END\\|UNITCHECK\\|CHECK\\|INIT\\)\\>")
 			     (not (looking-at "\\(\\sw\\|_\\)+::")))
 			;; sub f {}
 			(progn
@@ -4917,7 +4917,7 @@ CHARS is a string that contains good characters to have before us (however,
 	   (forward-sexp -1)
 	   (not
 	    (looking-at
-	     "\\(map\\|grep\\|printf?\\|system\\|exec\\|tr\\|s\\)\\>")))))))
+	     "\\(map\\|grep\\|say\\|printf?\\|system\\|exec\\|tr\\|s\\)\\>")))))))
 
 
 (defun cperl-indent-exp ()
@@ -4953,13 +4953,13 @@ conditional/loop constructs."
 			(if (eq (following-char) ?$ ) ; for my $var (list)
 			    (progn
 			      (forward-sexp -1)
-			      (if (looking-at "\\(my\\|local\\|our\\)\\>")
+			      (if (looking-at "\\(state\\|my\\|local\\|our\\)\\>")
 				  (forward-sexp -1))))
 			(if (looking-at
 			     (concat "\\(\\elsif\\|if\\|unless\\|while\\|until"
 				     "\\|for\\(each\\)?\\>\\(\\("
 				     cperl-maybe-white-and-comment-rex
-				     "\\(my\\|local\\|our\\)\\)?"
+				     "\\(state\\|my\\|local\\|our\\)\\)?"
 				     cperl-maybe-white-and-comment-rex
 				     "\\$[_a-zA-Z0-9]+\\)?\\)\\>"))
 			    (progn
@@ -5048,7 +5048,7 @@ Returns some position at the last line."
 	;; Looking at:
 	;; foreach my    $var
 	(if (looking-at
-	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(my\\|local\\|our\\)\\(\t*\\|[ \t][ \t]+\\)[^ \t\n]")
+	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(state\\|my\\|local\\|our\\)\\(\t*\\|[ \t][ \t]+\\)[^ \t\n]")
 	    (progn
 	      (forward-word 2)
 	      (delete-horizontal-space)
@@ -5057,7 +5057,7 @@ Returns some position at the last line."
 	;; Looking at:
 	;; foreach my $var     (
 	(if (looking-at
-	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(my\\|local\\|our\\)[ \t]*\\$[_a-zA-Z0-9]+\\(\t*\\|[ \t][ \t]+\\)[^ \t\n#]")
+	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(state\\|my\\|local\\|our\\)[ \t]*\\$[_a-zA-Z0-9]+\\(\t*\\|[ \t][ \t]+\\)[^ \t\n#]")
 	    (progn
 	      (forward-sexp 3)
 	      (delete-horizontal-space)
@@ -5067,7 +5067,7 @@ Returns some position at the last line."
 	;; Looking at (with or without "}" at start, ending after "({"):
 	;; } foreach my $var ()         OR   {
 	(if (looking-at
-	     "[ \t]*\\(}[ \t]*\\)?\\<\\(\\els\\(e\\|if\\)\\|continue\\|if\\|unless\\|while\\|for\\(each\\)?\\(\\([ \t]+\\(my\\|local\\|our\\)\\)?[ \t]*\\$[_a-zA-Z0-9]+\\)?\\|until\\)\\>\\([ \t]*(\\|[ \t\n]*{\\)\\|[ \t]*{")
+	     "[ \t]*\\(}[ \t]*\\)?\\<\\(\\els\\(e\\|if\\)\\|continue\\|if\\|unless\\|while\\|for\\(each\\)?\\(\\([ \t]+\\(state\\|my\\|local\\|our\\)\\)?[ \t]*\\$[_a-zA-Z0-9]+\\)?\\|until\\)\\>\\([ \t]*(\\|[ \t\n]*{\\)\\|[ \t]*{")
 	    (progn
 	      (setq ml (match-beginning 8)) ; "(" or "{" after control word
 	      (re-search-forward "[({]")
@@ -5632,10 +5632,14 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
 	      (mapconcat
 	       'identity
-	       '("if" "until" "while" "elsif" "else" "unless" "for"
+	       '("if" "until" "while" "elsif" "else" 
+                 "given" "when" "default" "break"
+                 "unless" "for"
 		 "foreach" "continue" "exit" "die" "last" "goto" "next"
-		 "redo" "return" "local" "exec" "sub" "do" "dump" "use" "our"
-		 "require" "package" "eval" "my" "BEGIN" "END" "CHECK" "INIT")
+		 "redo" "return" "local" "exec" "sub" "method" "do" "dump" 
+                 "use" "our"
+		 "require" "package" "eval" "my" "state" 
+                 "BEGIN" "END" "CHECK" "INIT" "UNITCHECK")
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
 					; In what follows we use `type' style
@@ -5714,24 +5718,24 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    (list
 	     (concat
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
-	      ;; "AUTOLOAD" "BEGIN" "CHECK" "DESTROY" "END" "INIT" "__END__" "chomp"
-	      ;; "chop" "defined" "delete" "do" "each" "else" "elsif"
-	      ;; "eval" "exists" "for" "foreach" "format" "goto"
+	      ;; "AUTOLOAD" "BEGIN" "CHECK" "DESTROY" "END" "INIT" "UNITCHECK" "__END__" "chomp"
+	      ;; "break" "chop" "default" "defined" "delete" "do" "each" "else" "elsif"
+	      ;; "eval" "exists" "for" "foreach" "format" "given" "goto"
 	      ;; "grep" "if" "keys" "last" "local" "map" "my" "next"
 	      ;; "no" "our" "package" "pop" "pos" "print" "printf" "push"
-	      ;; "q" "qq" "qw" "qx" "redo" "return" "scalar" "shift"
-	      ;; "sort" "splice" "split" "study" "sub" "tie" "tr"
+	      ;; "q" "qq" "qw" "qx" "redo" "return" "say" "scalar" "shift"
+	      ;; "sort" "splice" "split" "state" "study" "sub" "tie" "tr"
 	      ;; "undef" "unless" "unshift" "untie" "until" "use"
-	      ;; "while" "y"
-	      "AUTOLOAD\\|BEGIN\\|CHECK\\|cho\\(p\\|mp\\)\\|d\\(e\\(fined\\|lete\\)\\|"
+	      ;; "when" "while" "y"
+	      "AUTOLOAD\\|BEGIN\\|\\(UNIT\\)?CHECK\\|break\\|cho\\(p\\|mp\\)\\|d\\(e\\(f\\(ault|ined\\)\\|lete\\)\\|"
 	      "o\\)\\|DESTROY\\|e\\(ach\\|val\\|xists\\|ls\\(e\\|if\\)\\)\\|"
-	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(rep\\|oto\\)\\|INIT\\|if\\|keys\\|"
+	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(iven\\|rep\\|oto\\)\\|INIT\\|if\\|keys\\|"
 	      "l\\(ast\\|ocal\\)\\|m\\(ap\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
 	      "p\\(ackage\\|rint\\(\\|f\\)\\|ush\\|o\\(p\\|s\\)\\)\\|"
-	      "q\\(\\|q\\|w\\|x\\|r\\)\\|re\\(turn\\|do\\)\\|s\\(pli\\(ce\\|t\\)\\|"
-	      "calar\\|tudy\\|ub\\|hift\\|ort\\)\\|t\\(r\\|ie\\)\\|"
+	      "q\\(\\|q\\|w\\|x\\|r\\)\\|re\\(turn\\|do\\)\\|s\\(ay\\|pli\\(ce\\|t\\)\\|"
+	      "calar\\|t\\(ate\\|udy\\)\\|ub\\|hift\\|ort\\)\\|t\\(r\\|ie\\)\\|"
 	      "u\\(se\\|n\\(shift\\|ti\\(l\\|e\\)\\|def\\|less\\)\\)\\|"
-	      "while\\|y\\|__\\(END\\|DATA\\)__" ;__DATA__ added manually
+	      "wh\\(en\\|ile\\)\\|y\\|__\\(END\\|DATA\\)__" ;__DATA__ added manually
 	      "\\|[sm]"			; Added manually
 	      "\\)\\>") 2 'cperl-nonoverridable-face)
 	    ;;		(mapconcat 'identity
@@ -5743,7 +5747,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    ;; This highlights declarations and definitions differenty.
 	    ;; We do not try to highlight in the case of attributes:
 	    ;; it is already done by `cperl-find-pods-heres'
-	    (list (concat "\\<sub"
+	    (list (concat "\\<\\(?:sub\\|method\\)"
 			  cperl-white-and-comment-rex ; whitespace/comments
 			  "\\([^ \n\t{;()]+\\)" ; 2=name (assume non-anonymous)
 			  "\\("
@@ -5785,14 +5789,14 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      font-lock-string-face t)
 	    '("^[ \t]*\\([a-zA-Z0-9_]+[ \t]*:\\)[ \t]*\\($\\|{\\|\\<\\(until\\|while\\|for\\(each\\)?\\|do\\)\\>\\)" 1
 	      font-lock-constant-face)	; labels
-	    '("\\<\\(continue\\|next\\|last\\|redo\\|goto\\)\\>[ \t]+\\([a-zA-Z0-9_:]+\\)" ; labels as targets
+	    '("\\<\\(continue\\|next\\|last\\|redo\\|break\\|goto\\)\\>[ \t]+\\([a-zA-Z0-9_:]+\\)" ; labels as targets
 	      2 font-lock-constant-face)
 	    ;; Uncomment to get perl-mode-like vars
             ;;; '("[$*]{?\\(\\sw+\\)" 1 font-lock-variable-name-face)
             ;;; '("\\([@%]\\|\\$#\\)\\(\\sw+\\)"
             ;;;  (2 (cons font-lock-variable-name-face '(underline))))
 	    (cond ((featurep 'font-lock-extra)
-		   '("^[ \t]*\\(my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)\\([ \t]*,\\)?"
+		   '("^[ \t]*\\(state\\|my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)\\([ \t]*,\\)?"
 		     (3 font-lock-variable-name-face)
 		     (4 '(another 4 nil
 				  ("\\=[ \t]*,[ \t]*\\([$@%*][a-zA-Z0-9_:]+\\)\\([ \t]*,\\)?"
@@ -5801,7 +5805,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			nil t)))	; local variables, multiple
 		  (font-lock-anchored
 		   ;; 1=my_etc, 2=white? 3=(+white? 4=white? 5=var
-		   `(,(concat "\\<\\(my\\|local\\|our\\)"
+		   `(,(concat "\\<\\(state\\|my\\|local\\|our\\)"
 				  cperl-maybe-white-and-comment-rex
 				  "\\(("
 				     cperl-maybe-white-and-comment-rex
@@ -5849,9 +5853,9 @@ indentation and initial hashes.  Behaves usually outside of comment."
 				   'syntax-type 'multiline))
 				(setq cperl-font-lock-multiline-start nil)))
 			(3 font-lock-variable-name-face))))
-		  (t '("^[ \t{}]*\\(my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
+		  (t '("^[ \t{}]*\\(state\\|my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
 		       3 font-lock-variable-name-face)))
-	    '("\\<for\\(each\\)?\\([ \t]+\\(my\\|local\\|our\\)\\)?[ \t]*\\(\\$[a-zA-Z_][a-zA-Z_0-9]*\\)[ \t]*("
+	    '("\\<for\\(each\\)?\\([ \t]+\\(state\\|my\\|local\\|our\\)\\)?[ \t]*\\(\\$[a-zA-Z_][a-zA-Z_0-9]*\\)[ \t]*("
 	      4 font-lock-variable-name-face)
 	    ;; Avoid $!, and s!!, qq!! etc. when not fontifying syntaxically
 	    '("\\(?:^\\|[^smywqrx$]\\)\\(!\\)" 1 font-lock-negation-char-face)
@@ -7294,6 +7298,7 @@ One may build such TAGS files from CPerl mode menu."
      "\\$."				; $|
      "<<[a-zA-Z_'\"`]"			; <<FOO, <<'FOO'
      "||"
+     "//"
      "&&"
      "[CBIXSLFZ]<\\(\\sw\\|\\s \\|\\s_\\|[\n]\\)*>" ; C<code like text>
      "-[a-zA-Z_0-9]+[ \t]*=>"		; -option => value
@@ -7671,6 +7676,7 @@ ARGVOUT	Output filehandle with -i flag.
 BEGIN { ... }	Immediately executed (during compilation) piece of code.
 END { ... }	Pseudo-subroutine executed after the script finishes.
 CHECK { ... }	Pseudo-subroutine executed after the script is compiled.
+UNITCHECK { ... } 
 INIT { ... }	Pseudo-subroutine executed before the script starts running.
 DATA	Input filehandle for what follows after __END__	or __DATA__.
 accept(NEWSOCKET,GENERICSOCKET)
@@ -7678,6 +7684,7 @@ alarm(SECONDS)
 atan2(X,Y)
 bind(SOCKET,NAME)
 binmode(FILEHANDLE)
+break	Break out of a given/when statement
 caller[(LEVEL)]
 chdir(EXPR)
 chmod(LIST)
@@ -7805,6 +7812,7 @@ rewinddir(DIRHANDLE)
 rindex(STR,SUBSTR[,OFFSET])
 rmdir(FILENAME)
 s/PATTERN/REPLACEMENT/gieoxsm
+say [FILEHANDLE] [(LIST)]
 scalar(EXPR)
 seek(FILEHANDLE,POSITION,WHENCE)
 seekdir(DIRHANDLE,POS)
@@ -7839,6 +7847,7 @@ sprintf(FORMAT,LIST)
 sqrt(EXPR)
 srand(EXPR)
 stat(EXPR|FILEHANDLE|VAR)
+state VAR or state (VAR1,...)	Introduces a static lexical variable
 study[(SCALAR)]
 sub [NAME [(format)]] { BODY }	sub NAME [(format)];	sub [(format)] {...}
 substr(EXPR,OFFSET[,LEN])
@@ -7874,6 +7883,7 @@ x= ...	Repetition assignment.
 y/SEARCHLIST/REPLACEMENTLIST/
 ... | ...	Bitwise or.
 ... || ...	Logical or.
+... // ...      Defined-or.
 ~ ...		Unary bitwise complement.
 #!	OS interpreter indicator.  If contains `perl', used for options, and -x.
 AUTOLOAD {...}	Shorthand for `sub AUTOLOAD {...}'.
