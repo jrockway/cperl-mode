@@ -4786,7 +4786,7 @@ statement would start; thus the block in ${func()} does not count."
 		  (save-excursion
 		    (forward-sexp -1)
 		    ;; else {}     but not    else::func {}
-		    (or (and (looking-at "\\(else\\|continue\\|grep\\|map\\|BEGIN\\|END\\|CHECK\\|INIT\\)\\>")
+		    (or (and (looking-at "\\(else\\|continue\\|grep\\|map\\|BEGIN\\|END\\|UNITCHECK\\|CHECK\\|INIT\\)\\>")
 			     (not (looking-at "\\(\\sw\\|_\\)+::")))
 			;; sub f {}
 			(progn
@@ -5626,12 +5626,13 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      (mapconcat
 	       'identity
 	       '("if" "until" "while" "elsif" "else" 
-                 "given" "when" "default" 
+                 "given" "when" "default" "break"
                  "unless" "for"
 		 "foreach" "continue" "exit" "die" "last" "goto" "next"
 		 "redo" "return" "local" "exec" "sub" "method" "do" "dump" 
                  "use" "our"
-		 "require" "package" "eval" "my" "state" "BEGIN" "END" "CHECK" "INIT")
+		 "require" "package" "eval" "my" "state" 
+                 "BEGIN" "END" "CHECK" "INIT" "UNITCHECK")
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
 					; In what follows we use `type' style
@@ -5710,8 +5711,8 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    (list
 	     (concat
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
-	      ;; "AUTOLOAD" "BEGIN" "CHECK" "DESTROY" "END" "INIT" "__END__" "chomp"
-	      ;; "chop" "default" "defined" "delete" "do" "each" "else" "elsif"
+	      ;; "AUTOLOAD" "BEGIN" "CHECK" "DESTROY" "END" "INIT" "UNITCHECK" "__END__" "chomp"
+	      ;; "break" "chop" "default" "defined" "delete" "do" "each" "else" "elsif"
 	      ;; "eval" "exists" "for" "foreach" "format" "given" "goto"
 	      ;; "grep" "if" "keys" "last" "local" "map" "my" "next"
 	      ;; "no" "our" "package" "pop" "pos" "print" "printf" "push"
@@ -5719,7 +5720,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      ;; "sort" "splice" "split" "state" "study" "sub" "tie" "tr"
 	      ;; "undef" "unless" "unshift" "untie" "until" "use"
 	      ;; "when" "while" "y"
-	      "AUTOLOAD\\|BEGIN\\|CHECK\\|cho\\(p\\|mp\\)\\|d\\(e\\(f\\(ault|ined\\)\\|lete\\)\\|"
+	      "AUTOLOAD\\|BEGIN\\|\\(UNIT\\)?CHECK\\|break\\|cho\\(p\\|mp\\)\\|d\\(e\\(f\\(ault|ined\\)\\|lete\\)\\|"
 	      "o\\)\\|DESTROY\\|e\\(ach\\|val\\|xists\\|ls\\(e\\|if\\)\\)\\|"
 	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(iven\\|rep\\|oto\\)\\|INIT\\|if\\|keys\\|"
 	      "l\\(ast\\|ocal\\)\\|m\\(ap\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
@@ -5781,7 +5782,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      font-lock-string-face t)
 	    '("^[ \t]*\\([a-zA-Z0-9_]+[ \t]*:\\)[ \t]*\\($\\|{\\|\\<\\(until\\|while\\|for\\(each\\)?\\|do\\)\\>\\)" 1
 	      font-lock-constant-face)	; labels
-	    '("\\<\\(continue\\|next\\|last\\|redo\\|goto\\)\\>[ \t]+\\([a-zA-Z0-9_:]+\\)" ; labels as targets
+	    '("\\<\\(continue\\|next\\|last\\|redo\\|break\\|goto\\)\\>[ \t]+\\([a-zA-Z0-9_:]+\\)" ; labels as targets
 	      2 font-lock-constant-face)
 	    ;; Uncomment to get perl-mode-like vars
             ;;; '("[$*]{?\\(\\sw+\\)" 1 font-lock-variable-name-face)
@@ -7668,6 +7669,7 @@ ARGVOUT	Output filehandle with -i flag.
 BEGIN { ... }	Immediately executed (during compilation) piece of code.
 END { ... }	Pseudo-subroutine executed after the script finishes.
 CHECK { ... }	Pseudo-subroutine executed after the script is compiled.
+UNITCHECK { ... } 
 INIT { ... }	Pseudo-subroutine executed before the script starts running.
 DATA	Input filehandle for what follows after __END__	or __DATA__.
 accept(NEWSOCKET,GENERICSOCKET)
@@ -7675,6 +7677,7 @@ alarm(SECONDS)
 atan2(X,Y)
 bind(SOCKET,NAME)
 binmode(FILEHANDLE)
+break	Break out of a given/when statement
 caller[(LEVEL)]
 chdir(EXPR)
 chmod(LIST)
