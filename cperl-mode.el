@@ -4946,13 +4946,13 @@ conditional/loop constructs."
 			(if (eq (following-char) ?$ ) ; for my $var (list)
 			    (progn
 			      (forward-sexp -1)
-			      (if (looking-at "\\(my\\|local\\|our\\)\\>")
+			      (if (looking-at "\\(state\\|my\\|local\\|our\\)\\>")
 				  (forward-sexp -1))))
 			(if (looking-at
 			     (concat "\\(\\elsif\\|if\\|unless\\|while\\|until"
 				     "\\|for\\(each\\)?\\>\\(\\("
 				     cperl-maybe-white-and-comment-rex
-				     "\\(my\\|local\\|our\\)\\)?"
+				     "\\(state\\|my\\|local\\|our\\)\\)?"
 				     cperl-maybe-white-and-comment-rex
 				     "\\$[_a-zA-Z0-9]+\\)?\\)\\>"))
 			    (progn
@@ -5041,7 +5041,7 @@ Returns some position at the last line."
 	;; Looking at:
 	;; foreach my    $var
 	(if (looking-at
-	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(my\\|local\\|our\\)\\(\t*\\|[ \t][ \t]+\\)[^ \t\n]")
+	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(state\\|my\\|local\\|our\\)\\(\t*\\|[ \t][ \t]+\\)[^ \t\n]")
 	    (progn
 	      (forward-word 2)
 	      (delete-horizontal-space)
@@ -5050,7 +5050,7 @@ Returns some position at the last line."
 	;; Looking at:
 	;; foreach my $var     (
 	(if (looking-at
-	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(my\\|local\\|our\\)[ \t]*\\$[_a-zA-Z0-9]+\\(\t*\\|[ \t][ \t]+\\)[^ \t\n#]")
+	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(state\\|my\\|local\\|our\\)[ \t]*\\$[_a-zA-Z0-9]+\\(\t*\\|[ \t][ \t]+\\)[^ \t\n#]")
 	    (progn
 	      (forward-sexp 3)
 	      (delete-horizontal-space)
@@ -5060,7 +5060,7 @@ Returns some position at the last line."
 	;; Looking at (with or without "}" at start, ending after "({"):
 	;; } foreach my $var ()         OR   {
 	(if (looking-at
-	     "[ \t]*\\(}[ \t]*\\)?\\<\\(\\els\\(e\\|if\\)\\|continue\\|if\\|unless\\|while\\|for\\(each\\)?\\(\\([ \t]+\\(my\\|local\\|our\\)\\)?[ \t]*\\$[_a-zA-Z0-9]+\\)?\\|until\\)\\>\\([ \t]*(\\|[ \t\n]*{\\)\\|[ \t]*{")
+	     "[ \t]*\\(}[ \t]*\\)?\\<\\(\\els\\(e\\|if\\)\\|continue\\|if\\|unless\\|while\\|for\\(each\\)?\\(\\([ \t]+\\(state\\|my\\|local\\|our\\)\\)?[ \t]*\\$[_a-zA-Z0-9]+\\)?\\|until\\)\\>\\([ \t]*(\\|[ \t\n]*{\\)\\|[ \t]*{")
 	    (progn
 	      (setq ml (match-beginning 8)) ; "(" or "{" after control word
 	      (re-search-forward "[({]")
@@ -5631,7 +5631,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 		 "foreach" "continue" "exit" "die" "last" "goto" "next"
 		 "redo" "return" "local" "exec" "sub" "method" "do" "dump" 
                  "use" "our"
-		 "require" "package" "eval" "my" "BEGIN" "END" "CHECK" "INIT")
+		 "require" "package" "eval" "my" "state" "BEGIN" "END" "CHECK" "INIT")
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
 					; In what follows we use `type' style
@@ -5716,7 +5716,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      ;; "grep" "if" "keys" "last" "local" "map" "my" "next"
 	      ;; "no" "our" "package" "pop" "pos" "print" "printf" "push"
 	      ;; "q" "qq" "qw" "qx" "redo" "return" "say" "scalar" "shift"
-	      ;; "sort" "splice" "split" "study" "sub" "tie" "tr"
+	      ;; "sort" "splice" "split" "state" "study" "sub" "tie" "tr"
 	      ;; "undef" "unless" "unshift" "untie" "until" "use"
 	      ;; "when" "while" "y"
 	      "AUTOLOAD\\|BEGIN\\|CHECK\\|cho\\(p\\|mp\\)\\|d\\(e\\(f\\(ault|ined\\)\\|lete\\)\\|"
@@ -5724,8 +5724,8 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(iven\\|rep\\|oto\\)\\|INIT\\|if\\|keys\\|"
 	      "l\\(ast\\|ocal\\)\\|m\\(ap\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
 	      "p\\(ackage\\|rint\\(\\|f\\)\\|ush\\|o\\(p\\|s\\)\\)\\|"
-	      "q\\(\\|q\\|w\\|x\\|r\\)\\|re\\(turn\\|do\\)\\|say\\|s\\(pli\\(ce\\|t\\)\\|"
-	      "calar\\|tudy\\|ub\\|hift\\|ort\\)\\|t\\(r\\|ie\\)\\|"
+	      "q\\(\\|q\\|w\\|x\\|r\\)\\|re\\(turn\\|do\\)\\|s\\(ay\\|pli\\(ce\\|t\\)\\|"
+	      "calar\\|t\\(ate\\|udy\\)\\|ub\\|hift\\|ort\\)\\|t\\(r\\|ie\\)\\|"
 	      "u\\(se\\|n\\(shift\\|ti\\(l\\|e\\)\\|def\\|less\\)\\)\\|"
 	      "wh\\(en\\|ile\\)\\|y\\|__\\(END\\|DATA\\)__" ;__DATA__ added manually
 	      "\\|[sm]"			; Added manually
@@ -5788,7 +5788,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
             ;;; '("\\([@%]\\|\\$#\\)\\(\\sw+\\)"
             ;;;  (2 (cons font-lock-variable-name-face '(underline))))
 	    (cond ((featurep 'font-lock-extra)
-		   '("^[ \t]*\\(my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)\\([ \t]*,\\)?"
+		   '("^[ \t]*\\(state\\|my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)\\([ \t]*,\\)?"
 		     (3 font-lock-variable-name-face)
 		     (4 '(another 4 nil
 				  ("\\=[ \t]*,[ \t]*\\([$@%*][a-zA-Z0-9_:]+\\)\\([ \t]*,\\)?"
@@ -5797,7 +5797,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			nil t)))	; local variables, multiple
 		  (font-lock-anchored
 		   ;; 1=my_etc, 2=white? 3=(+white? 4=white? 5=var
-		   `(,(concat "\\<\\(my\\|local\\|our\\)"
+		   `(,(concat "\\<\\(state\\|my\\|local\\|our\\)"
 				  cperl-maybe-white-and-comment-rex
 				  "\\(("
 				     cperl-maybe-white-and-comment-rex
@@ -5845,9 +5845,9 @@ indentation and initial hashes.  Behaves usually outside of comment."
 				   'syntax-type 'multiline))
 				(setq cperl-font-lock-multiline-start nil)))
 			(3 font-lock-variable-name-face))))
-		  (t '("^[ \t{}]*\\(my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
+		  (t '("^[ \t{}]*\\(state\\|my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
 		       3 font-lock-variable-name-face)))
-	    '("\\<for\\(each\\)?\\([ \t]+\\(my\\|local\\|our\\)\\)?[ \t]*\\(\\$[a-zA-Z_][a-zA-Z_0-9]*\\)[ \t]*("
+	    '("\\<for\\(each\\)?\\([ \t]+\\(state\\|my\\|local\\|our\\)\\)?[ \t]*\\(\\$[a-zA-Z_][a-zA-Z_0-9]*\\)[ \t]*("
 	      4 font-lock-variable-name-face)
 	    ;; Avoid $!, and s!!, qq!! etc. when not fontifying syntaxically
 	    '("\\(?:^\\|[^smywqrx$]\\)\\(!\\)" 1 font-lock-negation-char-face)
@@ -7837,6 +7837,7 @@ sprintf(FORMAT,LIST)
 sqrt(EXPR)
 srand(EXPR)
 stat(EXPR|FILEHANDLE|VAR)
+state VAR or state (VAR1,...)	Introduces a static lexical variable
 study[(SCALAR)]
 sub [NAME [(format)]] { BODY }	sub NAME [(format)];	sub [(format)] {...}
 substr(EXPR,OFFSET[,LEN])
