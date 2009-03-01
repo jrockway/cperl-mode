@@ -1481,7 +1481,7 @@
 ;;;    coro, yield,
 ;;;    try, err,
 ;;;    zip, uniq, reduce, sum, max, min, kv, pairs, type, pick,
-;;;    "bit" "int" "str" "num" "ref" "bool" "Bit" "Int" "Str" "Num" "Ref",
+;;;    "bit" "int" "str" "num" "ref" "bool" "Any" "Bit" "Int" "Str" "Num" "Ref",
 ;;;    "Complex" "Exception" "Seq" "Range" "Set" "Junction" "Pair" "Mapping" "Signature" "Capture",
 ;;;    "Bool" "Array" "Hash" "IO" "Code" "Routine" "Sub" "Method" "Submethod",
 ;;;    "Macro" "Rule" "Block" "Bare" "Parametric" "Package" "Module" "Class", "Role",
@@ -7870,14 +7870,14 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	     (concat
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
 	      ;; the builtin types:
-	      ;; bit" "int" "str" "num" "ref" "bool" "Bit" "Int" "Str" "Num" "Ref"
+	      ;; bit" "int" "str" "num" "ref" "bool" "Any" "Bit" "Int" "Str" "Num" "Ref"
 		  ;; Complex Exception Seq Range Set Junction Pair Mapping Signature Capture "
           ;; Bag\\|Mapping\\|Blob\\|KeyHash\\|KeySet\\|KeyBag\\|Buf\\|Regex\\|Match\\|Any\\|"
 	      ;; Bool" "Array" "Hash" "IO" "Code" "Routine" "Sub" "Method" "Submethod"
 	      ;; Macro" "Rule" "Block" "Bare" "Parametric" "Package" "Module" "Class" "Role"
 	      ;; Object" "Grammar" "List" "Lazy" "Eager" 
 	      ;; Real" "Scalar" "int8" "Socket"
-	      "bit\\|int\\|str\\|num\\|ref\\|bool\\|Bit\\|Int\\|Str\\|Num\\|Ref\\|"
+	      "bit\\|int\\|str\\|num\\|ref\\|bool\\|Any\\|Bit\\|Int\\|Str\\|Num\\|Ref\\|"
 		  "Complex\\|Exception\\|Seq\\|Range\\|Set\\|Junction\\|Pair\\|Mapping\\|Signature\\|Capture\\|"
           "Bag\\|Mapping\\|Blob\\|KeyHash\\|KeySet\\|KeyBag\\|Buf\\|Regex\\|Match\\|Any\\|"
 	      "Bool\\|Array\\|Hash\\|IO\\|Code\\|Routine\\|Sub\\|Method\\|Submethod\\|"
