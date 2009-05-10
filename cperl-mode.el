@@ -1,14 +1,16 @@
 ;;; cperl-mode.el --- Perl code editing commands for Emacs
 
 ;; Copyright (C) 1985, 1986, 1987, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-;; 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008
+;; 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
 ;;     Free Software Foundation, Inc.
 
 ;; Author: Ilya Zakharevich and Bob Olson
-;; Maintainer: Ilya Zakharevich <ilyaz@cpan.org>
+;; Maintainer: Jonathan Rockway <jon@jrock.us>
 ;; Keywords: languages, Perl
 
-;; This file is part of GNU Emacs.
+;; This particular file is not actually part of GNU Emacs.
+
+;; It is from http://github.com/jrockway/cperl-mode
 
 ;; GNU Emacs is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -28,6 +30,15 @@
 ;;; Corrections made by Ilya Zakharevich ilyaz@cpan.org
 
 ;;; Commentary:
+
+;; This version of the file contains support for the syntax added by
+;; the MooseX::Declare CPAN module, as well as Perl 5.10 keyword
+;; support.
+
+;; The latest version is available from
+;; http://github.com/jrockway/cperl-mode
+;;
+;; (perhaps in the moosex-declare branch)
 
 ;; You can either fine-tune the bells and whistles of this mode or
 ;; bulk enable them by putting
