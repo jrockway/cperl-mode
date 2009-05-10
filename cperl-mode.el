@@ -4,7 +4,8 @@
 ;; 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009
 ;;     Free Software Foundation, Inc.
 
-;; Author: Ilya Zakharevich and Bob Olson
+;; Author: Ilya Zakharevich
+;;      Bob Olson
 ;; Maintainer: Jonathan Rockway <jon@jrock.us>
 ;; Keywords: languages, Perl
 
@@ -12,10 +13,10 @@
 
 ;; It is from http://github.com/jrockway/cperl-mode
 
-;; GNU Emacs is free software; you can redistribute it and/or modify
+;; GNU Emacs is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation; either version 3, or (at your option)
-;; any later version.
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
 
 ;; GNU Emacs is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,9 +24,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs; see the file COPYING.  If not, write to the
-;; Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
-;; Boston, MA 02110-1301, USA.
+;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Corrections made by Ilya Zakharevich ilyaz@cpan.org
 
@@ -847,7 +846,7 @@ voice);
 
 3) Everything is customizable, one-by-one or in a big sweep;
 
-4) It has many easily-accessable \"tools\":
+4) It has many easily-accessible \"tools\":
         a) Can run program, check syntax, start debugger;
         b) Can lineup vertically \"middles\" of rows, like `=' in
                 a  = b;
@@ -2064,11 +2063,11 @@ char is \"{\", insert extra newline before only if
 	  (save-excursion
 	    (setq insertpos (point-marker))
 	    (goto-char other-end)
-	    (setq last-command-char ?\{)
+	    (setq last-command-event ?\{)
 	    (cperl-electric-lbrace arg insertpos))
 	  (forward-char 1))
       ;; Check whether we close something "usual" with `}'
-      (if (and (eq last-command-char ?\})
+      (if (and (eq last-command-event ?\})
 	       (not
 		(condition-case nil
 		    (save-excursion
@@ -2086,7 +2085,7 @@ char is \"{\", insert extra newline before only if
 			  (save-excursion
 			    (skip-chars-backward " \t")
 			    (bolp)))
-		     (and (eq last-command-char ?\{) ; Do not insert newline
+		     (and (eq last-command-event ?\{) ; Do not insert newline
 			  ;; if after ")" and `cperl-extra-newline-before-brace'
 			  ;; is nil, do not insert extra newline.
 			  (not cperl-extra-newline-before-brace)
@@ -2107,7 +2106,7 @@ char is \"{\", insert extra newline before only if
 	      (save-excursion
 		(if insertpos (progn (goto-char insertpos)
 				     (search-forward (make-string
-						      1 last-command-char))
+						      1 last-command-event))
 				     (setq insertpos (1- (point)))))
 		(delete-char -1))))
 	(if insertpos
@@ -2146,12 +2145,12 @@ char is \"{\", insert extra newline before only if
       (setq cperl-auto-newline nil))
     (cperl-electric-brace arg)
     (and (cperl-val 'cperl-electric-parens)
-	 (eq last-command-char ?{)
-	 (memq last-command-char
+	 (eq last-command-event ?{)
+	 (memq last-command-event
 	       (append cperl-electric-parens-string nil))
 	 (or (if other-end (goto-char (marker-position other-end)))
 	     t)
-	 (setq last-command-char ?} pos (point))
+	 (setq last-command-event ?} pos (point))
 	 (progn (cperl-electric-brace arg t)
 		(goto-char pos)))))
 
@@ -2168,11 +2167,11 @@ See `cperl-electric-parens'."
 			 (point-marker))
 		     nil)))
     (if (and (cperl-val 'cperl-electric-parens)
-	     (memq last-command-char
+	     (memq last-command-event
 		   (append cperl-electric-parens-string nil))
 	     (>= (save-excursion (cperl-to-comment-or-eol) (point)) (point))
 	     ;;(not (save-excursion (search-backward "#" beg t)))
-	     (if (eq last-command-char ?<)
+	     (if (eq last-command-event ?<)
 		 (progn
 		   (and abbrev-mode ; later it is too late, may be after `for'
 			(expand-abbrev))
@@ -2183,7 +2182,7 @@ See `cperl-electric-parens'."
 	  (if other-end (goto-char (marker-position other-end)))
 	  (insert (make-string
 		   (prefix-numeric-value arg)
-		   (cdr (assoc last-command-char '((?{ .?})
+		   (cdr (assoc last-command-event '((?{ .?})
 						   (?[ . ?])
 						   (?( . ?))
 						   (?< . ?>))))))
@@ -2198,7 +2197,7 @@ Affected by `cperl-electric-parens'."
   (let ((beg (save-excursion (beginning-of-line) (point)))
 	(other-end (if (and cperl-electric-parens-mark
 			    (cperl-val 'cperl-electric-parens)
-			    (memq last-command-char
+			    (memq last-command-event
 				  (append cperl-electric-parens-string nil))
 			    (cperl-mark-active)
 			    (< (mark) (point)))
@@ -2207,7 +2206,7 @@ Affected by `cperl-electric-parens'."
 	p)
     (if (and other-end
 	     (cperl-val 'cperl-electric-parens)
-	     (memq last-command-char '( ?\) ?\] ?\} ?\> ))
+	     (memq last-command-event '( ?\) ?\] ?\} ?\> ))
 	     (>= (save-excursion (cperl-to-comment-or-eol) (point)) (point))
 	     ;;(not (save-excursion (search-backward "#" beg t)))
 	     )
@@ -2217,7 +2216,7 @@ Affected by `cperl-electric-parens'."
 	  (if other-end (goto-char other-end))
 	  (insert (make-string
 		   (prefix-numeric-value arg)
-		   (cdr (assoc last-command-char '((?\} . ?\{)
+		   (cdr (assoc last-command-event '((?\} . ?\{)
 						   (?\] . ?\[)
 						   (?\) . ?\()
 						   (?\> . ?\<))))))
@@ -2229,9 +2228,9 @@ Affected by `cperl-electric-parens'."
 Help message may be switched off by setting `cperl-message-electric-keyword'
 to nil."
   (let ((beg (save-excursion (beginning-of-line) (point)))
-	(dollar (and (eq last-command-char ?$)
+	(dollar (and (eq last-command-event ?$)
 		     (eq this-command 'self-insert-command)))
-	(delete (and (memq last-command-char '(?\s ?\n ?\t ?\f))
+	(delete (and (memq last-command-event '(?\s ?\n ?\t ?\f))
 		     (memq this-command '(self-insert-command newline))))
 	my do)
     (and (save-excursion
@@ -2285,7 +2284,7 @@ to nil."
 				 (forward-char 1)
 			       (delete-char 1)))
 	     (search-backward ")")
-	     (if (eq last-command-char ?\()
+	     (if (eq last-command-event ?\()
 		 (progn			; Avoid "if (())"
 		   (delete-backward-char 1)
 		   (delete-backward-char -1))))
@@ -2306,7 +2305,7 @@ to nil."
 
 (defun cperl-electric-pod ()
   "Insert a POD chunk appropriate after a =POD directive."
-  (let ((delete (and (memq last-command-char '(?\s ?\n ?\t ?\f))
+  (let ((delete (and (memq last-command-event '(?\s ?\n ?\t ?\f))
 		     (memq this-command '(self-insert-command newline))))
 	head1 notlast name p really-delete over)
     (and (save-excursion
@@ -2526,7 +2525,7 @@ If in POD, insert appropriate lines."
   (interactive "P")
   (let ((end (point))
 	(auto (and cperl-auto-newline
-		   (or (not (eq last-command-char ?:))
+		   (or (not (eq last-command-event ?:))
 		       cperl-auto-newline-after-colon)))
 	insertpos)
     (if (and ;;(not arg)
@@ -2540,7 +2539,7 @@ If in POD, insert appropriate lines."
 		     ;; Colon is special only after a label
 		     ;; So quickly rule out most other uses of colon
 		     ;; and do no indentation for them.
-		     (and (eq last-command-char ?:)
+		     (and (eq last-command-event ?:)
 			  (save-excursion
 			    (forward-word 1)
 			    (skip-chars-forward " \t")
@@ -3634,7 +3633,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 	 face head-face here-face b e bb tag qtag b1 e1 argument i c tail tb
 	 is-REx is-x-REx REx-subgr-start REx-subgr-end was-subgr i2 hairy-RE
 	 (case-fold-search nil) (inhibit-read-only t) (buffer-undo-list t)
-	 (modified (buffer-modified-p)) overshoot is-o-REx
+	 (modified (buffer-modified-p)) overshoot is-o-REx name
 	 (after-change-functions nil)
 	 (cperl-font-locking t)
 	 (use-syntax-state (and cperl-syntax-state
@@ -4478,7 +4477,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				 ;; This is not pretty: the 5.8.7 logic:
 				 ;; \0numx  -> octal (up to total 3 dig)
 				 ;; \DIGIT  -> backref unless \0
-				 ;; \DIGITs -> backref if legal
+				 ;; \DIGITs -> backref if valid
 				 ;;	     otherwise up to 3 -> octal
 				 ;; Do not try to distinguish, we guess
 				 ((or (and (memq qtag (append "01234567" nil))
@@ -6606,7 +6605,7 @@ Customized by setting variables `cperl-shrink-wrap-info-frame',
 			 ;; Non-functioning under OS/2:
 			 (if (eq char-height 1) (setq char-height 18))
 			 ;; Title, menubar, + 2 for slack
-			 (- (/ (x-display-pixel-height) char-height) 4)))
+			 (- (/ (display-pixel-height) char-height) 4)))
 		 (if (> height max-height) (setq height max-height))
 		 ;;(message "was %s doing %s" iniheight height)
 		 (if not-loner
@@ -7123,6 +7122,8 @@ Use as
 		(setcar cperl-hierarchy
 			(cons cons1 (car cperl-hierarchy)))))))
       (end-of-line))))
+
+(declare-function x-popup-menu "xmenu.c" (position menu))
 
 (defun cperl-tags-hier-init (&optional update)
   "Show hierarchical menu of classes and methods.
@@ -8936,5 +8937,5 @@ do extra unwind via `cperl-unwind-to-safe'."
 
 (provide 'cperl-mode)
 
-;;; arch-tag: 42e5b19b-e187-4537-929f-1a7408980ce6
+;; arch-tag: 42e5b19b-e187-4537-929f-1a7408980ce6
 ;;; cperl-mode.el ends here
