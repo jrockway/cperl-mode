@@ -1469,7 +1469,7 @@
 ;;;   * file suffix .p6
 ;;;
 ;;;  Highlighting new keywords/builtins:
-;;;    class, role, grammar, rule, token, regex, 
+;;;    class, module, role, grammar, rule, token, regex, 
 ;;;    has, state, does,
 ;;;    say,
 ;;;    rx,
@@ -1493,7 +1493,8 @@
 ;;;    recognize more special blocks:
 ;;;      START, ENTER, LEAVE, KEEP, UNDO, FIRST, NEXT,
 ;;;      LAST, PRE, POST, CATCH, CONTROL,
-;;;      given, when, default, gather, loop
+;;;      given, when, default, gather, loop,
+;;;      class, module, role, grammar
 ;;;
 ;;;  Recognize if/elsif/unless/while/until/given/when/for/loop-conditions
 ;;;  without parens. (currently rather trivial heuristic)
@@ -2097,7 +2098,7 @@ This way enabling/disabling of menu items is more correct."
    (string-match "\\.[Pp]6$" (buffer-file-name))
    (save-excursion
      (beginning-of-buffer)
-     (search-forward-regexp "^[\t ]*\\(use v6\\|\\(class\\|role\\|grammar\\|rule\\|token\\|regex\\)[\t ]+.*;\\)" 320 t))))
+     (search-forward-regexp "^[\t ]*\\(use \\(v6\\|6\\.[0-9]+\\)\\|\\(class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\)[\t ]+.*;\\)" 320 t))))
 
 (if cperl-can-font-lock
     (progn
@@ -6971,7 +6972,7 @@ statement would start; thus the block in ${func()} does not count."
 		   (save-excursion
 		    (forward-sexp -1)
 		    ;; else {}     but not    else::func {}
-		    (or (and (looking-at "\\(else\\|class\\|role\\|grammar\\|rule\\|token\\|regex\\|continue\\|grep\\|map\\|gather\\|async\\|atomically\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|START\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>")
+		    (or (and (looking-at "\\(else\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\|continue\\|grep\\|map\\|gather\\|async\\|atomically\\|given\\|when\\|default\\|loop\\|for\\|BEGIN\\|END\\|CHECK\\|INIT\\|START\\|FIRST\\|ENTER\\|LEAVE\\|KEEP\\|UNDO\\|NEXT\\|LAST\\|PRE\\|POST\\|CATCH\\|CONTROL\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>")
 			     (not (looking-at "\\(\\sw\\|_\\)+::")))
 			;; sub f {}
 			(progn
@@ -6988,7 +6989,7 @@ statement would start; thus the block in ${func()} does not count."
 	      (save-excursion ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
 		;; perl6: todo: correct in P5? Then use-v6'ify!
 		(beginning-of-line)
-		(looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|class\\|role\\|grammar\\|rule\\|token\\|regex\\|gather\\|async\\|atomically\\|given\\|wh\\(ile\\|en\\)\\|loop\\|for\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>"))))
+		(looking-at "\\s *}?\\s *\\(\\(els\\(e\\s +\\|\\)\\)?if\\|un\\(less\\|til\\)\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\|gather\\|async\\|atomically\\|given\\|wh\\(ile\\|en\\)\\|loop\\|for\\|\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?\\)\\>"))))
       (error nil))))
 
 (defun cperl-after-expr-p (&optional lim chars test)
@@ -7793,7 +7794,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
              "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL"
              "given" "when" "default" "has" "returns" "of" "is" "does"
              "\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?"
-             "class" "role" "try")
+             "class" "module" "role" "try")
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
 					; In what follows we use `type' style
@@ -7905,7 +7906,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "AUTOLOAD\\|BEGIN\\|CHECK\\|a\\(sync\\|tomically\\)\\|c\\(lass\\|ho\\(p\\|mp\\)\\|oro\\)\\|d\\(e\\(fined\\|lete\\)\\|"
 	      "o\\)\\|DESTROY\\|e\\(ach\\|val\\|xists\\|ls\\(e\\|if\\)\\)\\|"
 	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(ather\\|r\\(ep\\|ammar\\)\\|oto\\)\\|has\\|INIT\\|if\\|k\\(eys\\|v\\)\\|"
-	      "l\\(ast\\|o\\(cal\\|op\\)\\)\\|m\\(a\\(p\\|x\\)\\|in\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
+	      "l\\(ast\\|o\\(cal\\|op\\)\\)\\|m\\(a\\(p\\|x\\)\\|in\\|odule\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
 	      "p\\(a\\(ckage\\|irs\\)\\|ick\\|rint\\(\\|f\\)\\|ush\\|o\\(p\\|s\\)\\)\\|"
 	      "q\\(\\|q\\|w\\|x\\|r\\)\\|rx\\|re\\(gex\\|turn\\|d\\(o\\|uce\\)\\)\\|r\\(o\\|u\\)le\\|s\\(ay\\|pli\\(ce\\|t\\)\\|"
 	      "calar\\|t\\(udy\\|ate\\)\\|u\\(b\\|m\\)\\|hift\\|ort\\)\\|t\\(r\\|ie\\|ype\\|oken\\|aken?\\)\\|"
@@ -7946,7 +7947,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			 (if (eq (char-after (cperl-1- (match-end 0))) ?\{ )
 			     'font-lock-function-name-face
 			   'font-lock-variable-name-face))))
-	    '("\\<\\(package\\|class\\|role\\|grammar\\|rule\\|token\\|regex\\|require\\|use\\|import\\|no\\|bootstrap\\)[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t;]" ; require A if B;
+	    '("\\<\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\|require\\|use\\|import\\|no\\|bootstrap\\)[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t;]" ; require A if B;
 	      2 font-lock-function-name-face)
 	    '("^[ \t]*format[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t]*=[ \t]*$"
 	      1 font-lock-function-name-face)
@@ -8781,9 +8782,9 @@ in subdirectories too."
 		;;       1=fullname  2=package?             3=name                       4=proto?             5=attrs? (VERY APPROX!)
 		"/\\<sub[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\(([^()]*)[ \t]*\\)?\\([ \t]*:[^#{;]*\\)?\\([{#]\\|$\\)/\\3/"
 		"-r"
-		"/\\<\\(package\\|class\\|role\\|grammar\\|rule\\|token\\|regex\\)[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\([#;]\\|$\\)/\\2/"; perl6
+		"/\\<\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\)[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\([#;]\\|$\\)/\\2/"; perl6
 		"-r"
-		"/\\<\\(package\\|class\\|role\\|grammar\\|rule\\|token\\|regex\\)[ \\t]*;/\\1;/"))
+		"/\\<\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\)[ \\t]*;/\\1;/"))
 	res)
     (if add (setq args (cons "-a" args)))
     (or files (setq files (list buffer-file-name)))
@@ -8994,7 +8995,7 @@ by CPerl."
 	      (progn
 		(insert (elt elt 3)
 			127
-			(if (string-match "^\\(package\\|class\\|role\\|grammar\\|rule\\|token\\|regex\\) " (car elt)) ; perl6
+			(if (string-match "^\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\) " (car elt)) ; perl6
 			    (substring (car elt) 8)
 			  (car elt) )
 			1
@@ -9131,7 +9132,7 @@ Use as
 (defvar cperl-tags-hier-regexp-list
   (concat
    "^\\("
-      "\\(package\\|class\\|role\\|grammar\\|rule\\|token\\|regex\\)\\>"
+      "\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\)\\>"
      "\\|"
       "sub\\>[^\n]+::"
      "\\|"
