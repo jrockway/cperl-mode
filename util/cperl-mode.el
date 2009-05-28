@@ -1456,12 +1456,12 @@
 ;;;				Would not find HERE-doc ended by EOF without NL
 ;;; `cperl-short-docs':		Correct not-doubled \-escapes
 
-;;; Perl6 changes for Pugs by Steffen Schwigon (http://renormalist.net)
+;;; Perl6 changes by Steffen Schwigon (http://renormalist.net)
 ;;;
 ;;; Modified to understand Perl6 syntax.
 ;;; Details:
 ;;;
-;;;  New variable `cperl-use-v6' that switches between Perl5/Perl6
+;;;  New config variable `cperl-use-v6' that switches between Perl5/Perl6
 ;;;  syntax.
 ;;;
 ;;;  Simple heuristics to automatically activate Perl6 specific syntax
@@ -7872,15 +7872,15 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
 	      ;; the builtin types:
 	      ;; bit" "int" "str" "num" "ref" "bool" "Any" "Bit" "Int" "Str" "Num" "Ref"
-		  ;; Complex Exception Seq Range Set Junction Pair Mapping Signature Capture "
-          ;; Bag\\|Mapping\\|Blob\\|KeyHash\\|KeySet\\|KeyBag\\|Buf\\|Regex\\|Match\\|Any\\|"
+              ;; Complex Exception Seq Range Set Junction Pair Mapping Signature Capture "
+              ;; Bag\\|Mapping\\|Blob\\|KeyHash\\|KeySet\\|KeyBag\\|Buf\\|Regex\\|Match\\|Any\\|"
 	      ;; Bool" "Array" "Hash" "IO" "Code" "Routine" "Sub" "Method" "Submethod"
 	      ;; Macro" "Rule" "Block" "Bare" "Parametric" "Package" "Module" "Class" "Role"
 	      ;; Object" "Grammar" "List" "Lazy" "Eager" 
 	      ;; Real" "Scalar" "int8" "Socket"
 	      "bit\\|int\\|str\\|num\\|ref\\|bool\\|Any\\|Bit\\|Int\\|Str\\|Num\\|Ref\\|"
-		  "Complex\\|Exception\\|Seq\\|Range\\|Set\\|Junction\\|Pair\\|Mapping\\|Signature\\|Capture\\|"
-          "Bag\\|Mapping\\|Blob\\|KeyHash\\|KeySet\\|KeyBag\\|Buf\\|Regex\\|Match\\|Any\\|"
+              "Complex\\|Exception\\|Seq\\|Range\\|Set\\|Junction\\|Pair\\|Mapping\\|Signature\\|Capture\\|"
+              "Bag\\|Mapping\\|Blob\\|KeyHash\\|KeySet\\|KeyBag\\|Buf\\|Regex\\|Match\\|Any\\|"
 	      "Bool\\|Array\\|Hash\\|IO\\|Code\\|Routine\\|Sub\\|Method\\|Submethod\\|"
 	      "Macro\\|Rule\\|Block\\|Bare\\|Parametric\\|Package\\|Module\\|Class\\|Role\\|"
 	      "Object\\|Grammar\\|List\\|Lazy\\|Eager\\|"
@@ -7927,12 +7927,12 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			  cperl-white-and-comment-rex ; whitespace/comments
 			  "\\([^ \n\t{;()]+\\)" ; 5=name (assume non-anonymous)
 			  "\\("
-			    cperl-maybe-white-and-comment-rex ;whitespace/comments?
-			    "([^()]*)\\)?" ; prototype
-			  cperl-maybe-white-and-comment-rex ; whitespace/comments?
-			    "\\(returns[ \t]+.*\\)?" ; perl6: returns
-			  cperl-maybe-white-and-comment-rex ; whitespace/comments?
-			  "[{;]")
+                          cperl-maybe-white-and-comment-rex ;whitespace/comments?
+                          "([^()]*)\\)?" ; prototype
+                          cperl-maybe-white-and-comment-rex ; whitespace/comments?
+                          "\\(returns[ \t]+.*\\)?" ; perl6: returns
+                          cperl-maybe-white-and-comment-rex ; whitespace/comments?
+                          "[{;]")
 		  5 (if cperl-font-lock-multiline
 			'(if (eq (char-after (cperl-1- (match-end 0))) ?\{ )
 			     'font-lock-function-name-face
