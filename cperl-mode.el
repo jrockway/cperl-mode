@@ -5868,8 +5868,10 @@ indentation and initial hashes.  Behaves usually outside of comment."
             ;; XXX: i think this is redundant for the sub-alikes, but
             ;; it will fix a corner case where the prototype has
             ;; nested parens in it.
-	    '("\\<\\(package\\|require\\|use\\|import\\|no\\|bootstrap\\|class\\|with\\|extends\\|role\\|\\(?:multi \\)?method\\|before\\|after\\|around\\|override\\|augment\\)[ \t]+\\(?:#.+\n\\|[ \t]*\n\\)?[ \t]*\\([a-zA-z_][a-zA-z_0-9:]*\\)\\([ \t;]\\|$\\)" ; require A if B;
+	    '("\\<\\(package\\|require\\|use\\|import\\|no\\|bootstrap\\|class\\|role\\|\\(?:multi \\)?method\\|before\\|after\\|around\\|override\\|augment\\)[ \t]+\\(?:#.+\n\\|[ \t]*\n\\)?[ \t]*\\([a-zA-z_][a-zA-z_0-9:]*\\)\\([ \t;]\\|$\\)" ; require A if B;
 	      2 font-lock-function-name-face)
+            '("\\<\\(?:with\\|extends\\)[ \t](?\\(?:\\([a-zA-z_][a-zA-z_0-9:]*\\) ?,? ?\\)+)?"
+              1 font-lock-function-name-face)
 	    '("^[ \t]*format[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t]*=[ \t]*$"
 	      1 font-lock-function-name-face)
 	    (cond ((featurep 'font-lock-extra)
