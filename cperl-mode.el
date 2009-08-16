@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.19 2006/06/01 11:11:57 vera Exp vera $
+;; $Id: cperl-mode.el,v 5.20 2006/08/03 17:55:04 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1449,6 +1449,14 @@
 ;;; Perl/Regexp menu:		3 new entries for `cperl-next-interpolated-REx'
 ;;; `cperl-praise':		Mention finded interpolated RExen.
 
+;;; After 5.19:
+;;; `cperl-init-faces':		Highlight %$foo, @$foo too.
+;;; `cperl-short-docs':		Better docs for system, exec
+;;; `cperl-find-pods-heres':	Better detect << after print {FH} <<EOF etc.
+;;;				Would not find HERE-doc ended by EOF without NL
+;;; `cperl-short-docs':		Correct not-doubled \-escapes
+
+
 ;;; Code:
 
 (if (fboundp 'eval-when-compile)
@@ -1471,6 +1479,9 @@
       (defvar gud-perldb-history)
       (defvar font-lock-background-mode) ; not in Emacs
       (defvar font-lock-display-type)	; ditto
+      (defvar paren-backwards-message)	; Not in newer XEmacs?
+      (defvar vc-rcs-header)		; likewise?
+      (defvar vc-sccs-header)		; likewise?
       (or (fboundp 'defgroup)
 	  (defmacro defgroup (name val doc &rest arr)
 	    nil))
@@ -5400,7 +5411,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 						(progn
 						  (forward-sexp -2)
 						  (not
-						   (looking-at "print\\>")))
+						   (looking-at "\\(printf?\\|system\\|exec\\|sort\\)\\>")))
 						(error t)))))))
 				   (error nil))) ; func(<<EOF)
 			       (and (not (match-beginning 6)) ; Empty
@@ -5430,7 +5441,8 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		  ;; some hook of fontification, and max is random
 		  (or (and (re-search-forward (concat "^" qtag "$")
 					      stop-point 'toend)
-			   (eq (following-char) ?\n))
+			   ;;;(eq (following-char) ?\n) ; XXXX WHY???
+			   )
 		    (progn		; Pretend we matched at the end
 		      (goto-char (point-max))
 		      (re-search-forward "\\'")
@@ -6340,7 +6352,9 @@ CHARS is a string that contains good characters to have before us (however,
 	(while (and (or (not lim)
 			(> (point) lim))
 		    (not (cperl-after-expr-p lim)))
-	  (forward-sexp -1)))
+	  (forward-sexp -1)
+	  ;; May be after $, @, $# etc of a variable
+	  (skip-chars-backward "$@%#")))
     (error nil)))
 
 (defun cperl-at-end-of-expr (&optional lim)
@@ -7319,6 +7333,12 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			 cperl-array-face) ; arrays and hashes
 		     font-lock-variable-name-face) ; Just to put something
 		   t)
+		  ("\\(@\\|\\$#\\)\\(\\$+\\([a-zA-Z_:][a-zA-Z0-9_:]*\\|[^ \t\n]\\)\\)"
+		   (1 cperl-array-face)
+		   (2 font-lock-variable-name-face))
+		  ("\\(%\\)\\(\\$+\\([a-zA-Z_:][a-zA-Z0-9_:]*\\|[^ \t\n]\\)\\)"
+		   (1 cperl-hash-face)
+		   (2 font-lock-variable-name-face))
 		  ;;("\\([smy]\\|tr\\)\\([^a-z_A-Z0-9]\\)\\(\\([^\n\\]*||\\)\\)\\2")
 		       ;;; Too much noise from \s* @s[ and friends
 		  ;;("\\(\\<\\([msy]\\|tr\\)[ \t]*\\([^ \t\na-zA-Z0-9_]\\)\\|\\(/\\)\\)"
@@ -8963,8 +8983,8 @@ $~	The name of the current report format.
 \\  Creates reference to what follows, like \$var, or quotes non-\w in strings.
 \\0	Octal char, e.g. \\033.
 \\E	Case modification terminator.  See \\Q, \\L, and \\U.
-\\L	Lowercase until \\E .  See also \l, lc.
-\\U	Upcase until \\E .  See also \u, uc.
+\\L	Lowercase until \\E .  See also \\l, lc.
+\\U	Upcase until \\E .  See also \\u, uc.
 \\Q	Quote metacharacters until \\E .  See also quotemeta.
 \\a	Alarm character (octal 007).
 \\b	Backspace character (octal 010).
@@ -9026,7 +9046,7 @@ endservent
 eof[([FILEHANDLE])]
 ... eq ...	String equality.
 eval(EXPR) or eval { BLOCK }
-exec(LIST)
+exec([TRUENAME] ARGV0, ARGVs)     or     exec(SHELL_COMMAND_LINE)
 exit(EXPR)
 exp(EXPR)
 fcntl(FILEHANDLE,FUNCTION,SCALAR)
@@ -9162,7 +9182,7 @@ substr(EXPR,OFFSET[,LEN])
 symlink(OLDFILE,NEWFILE)
 syscall(LIST)
 sysread(FILEHANDLE,SCALAR,LENGTH[,OFFSET])
-system(LIST)
+system([TRUENAME] ARGV0 [,ARGV])     or     system(SHELL_COMMAND_LINE)
 syswrite(FILEHANDLE,SCALAR,LENGTH[,OFFSET])
 tell[(FILEHANDLE)]
 telldir(DIRHANDLE)
@@ -9599,6 +9619,8 @@ We suppose that the regexp is scanned already."
     (goto-char pre-if)
     (forward-sexp 2)
     (forward-sexp -1)
+    ;; May be after $, @, $# etc of a variable
+    (skip-chars-backward "$@%#")
     (setq pre-A (point))
     (cperl-forward-to-end-of-expr)
     (setq post-A (point))
@@ -10200,7 +10222,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 5.19 $"))
+  (let ((v  "$Revision: 5.20 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
