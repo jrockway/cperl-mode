@@ -42,10 +42,13 @@
 
 ;;; Corrections made by Ilya Zakharevich ilyaz@cpan.org
 ;;; XEmacs changes by Peter Arius arius@informatik.uni-erlangen.de
+;;; XEmacs 'delete key behavior handling added for XEmacs 20.x by
+;;; Gary D. Foster <Gary.Foster@corp.sun.com>
+;;; Karl M. Hegbloom <karlheg@inetarena.com>
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 6.0 2008/03/31 23:07:24 vera Exp vera $
+;; $Id: cperl-mode.el,v 6.1 2008/04/03 01:04:08 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1543,6 +1546,13 @@
 ;;; `cperl-highlight-charclass': New subst
 ;;; `cperl-tips-faces'		Correct literal backwacks, mention multipliers
 
+;;; After 6.0:
+;;;; Incorporate XEmacs changes:
+;;; `cperl-mode-map':		Bind 'delete 'backspace on XEmacs
+;;; `cperl-electric-delete':	New (unsupported) function for XEmacs bindings
+;;; toplevel:			Define obsolete alias for `pod-spell'
+;;;				autoload updates to `mode-alist's
+
 ;;; Code:
 
 (if (fboundp 'eval-when-compile)
@@ -2714,7 +2724,12 @@ versions of Emacs."
 		    [(control meta |)])
   ;;(cperl-define-key "\M-q" 'cperl-fill-paragraph)
   ;;(cperl-define-key "\e;" 'cperl-indent-for-comment)
-  (cperl-define-key "\177" 'cperl-electric-backspace)
+  ;; XEmacs change: bind cperl-electric-delete to 'delete
+  (if cperl-xemacs-p
+      (progn
+        (cperl-define-key 'backspace 'cperl-electric-backspace)
+        (cperl-define-key 'delete 'cperl-electric-delete))
+    (cperl-define-key "\177" 'cperl-electric-backspace))
   (cperl-define-key "\t" 'cperl-indent-command)
   ;; don't clobber the backspace binding:
   (cperl-define-key "\C-c\C-hF" 'cperl-info-on-command
@@ -4139,6 +4154,30 @@ key.  Will untabivy if `cperl-electric-backspace-untabify' is non-nil."
       (if cperl-electric-backspace-untabify
 	  (backward-delete-char-untabify arg)
 	(delete-backward-char arg)))))
+
+;; XEmacs addition
+;; helper function for deletion, which honors the desired delete direction
+;; behavior.  Added by Gary D. Foster, <Gary.Foster@corp.sun.com> and bound
+;; to the 'delete keysym by default.
+(defun cperl-electric-delete (arg)
+  "Delete, or remove the whitespace inserted by an electric key.
+Delete direction is controlled by the setting of `delete-key-deletes-forward'."
+  (interactive "*p")
+  (if (and cperl-auto-newline
+	   (memq last-command '(cperl-electric-semi
+				cperl-electric-terminator
+				cperl-electric-lbrace))
+	   (memq (preceding-char) '(?  ?\t ?\n)))
+      (let (p)
+	(if (eq last-command 'cperl-electric-lbrace)
+	    (skip-chars-forward " \t\n"))
+	(setq p (point))
+	(skip-chars-backward " \t\n")
+	(delete-region (point) p))
+    (if (fboundp 'backward-or-forward-delete-char)
+	(let ((f 'backward-or-forward-delete-char))
+	  (funcall f arg))		; Avoid "not defined"
+      (backward-delete-char-untabify arg))))
 
 (defun cperl-inside-parens-p ()		;; NOT USED????
   (condition-case ()
@@ -6903,7 +6942,6 @@ conditional/loop constructs."
 	     (delete-char -1))))))
 
 ;; Stolen from lisp-mode with a lot of improvements
-
 (defun cperl-fill-paragraph (&optional justify iteration)
   "Like \\[fill-paragraph], but handle CPerl comments.
 If any of the current line is a comment, fill the comment or the
@@ -10559,10 +10597,18 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 6.0 $"))
+  (let ((v  "$Revision: 6.1 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
+
+(if cperl-xemacs-p ;; backwards compatibility for XEmacs old POD spelling stuff
+    (let ((f 'define-obsolete-function-alias))
+      (funcall f 'pod-spell 'cperl-pod-spell)))		; Avoid "not defined"
+
+;; XEmacs additions
+;;;###autoload(add-to-list 'auto-mode-alist '("\\.\\([pP][Llm]\\|al\\)\\'" . perl-mode))
+;;;###autoload(add-to-list 'interpreter-mode-alist '("perl" . perl-mode))
 
 (provide 'cperl-mode)
 
