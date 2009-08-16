@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.10 2005/10/23 22:57:40 vera Exp vera $
+;; $Id: cperl-mode.el,v 5.12 2005/10/31 23:21:44 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1319,6 +1319,47 @@
 ;;; `cperl-1+':			Moved to before the first use
 ;;; `cperl-1-':			Likewise
 
+;;; After 5.10:
+
+;;; This code may lock Emacs hard!!!  Use on your own risk!
+
+;;; `cperl-font-locking':	New internal variable
+;;; `cperl-beginning-of-property': New function
+;;; `cperl-calculate-indent':	Use `cperl-beginning-of-property'
+;;;	instead of `previous-single-property-change'
+;;; `cperl-unwind-to-safe':	Likewise
+;;; `cperl-after-expr-p':	Likewise
+;;; `cperl-get-here-doc-region': Likewise
+;;; `cperl-font-lock-fontify-region-function': Likewise
+;;; `cperl-to-comment-or-eol':	Do not call `cperl-update-syntaxification'
+;;;					recursively
+;;;				Bound `next-single-property-change'
+;;;					via `point-max'
+;;; `cperl-unwind-to-safe':	Bound likewise
+;;; `cperl-font-lock-fontify-region-function': Likewise
+;;; `cperl-find-pods-heres':	Mark as recursive for `cperl-to-comment-or-eol'
+;;;				Initialization of
+;;;	`cperl-font-lock-multiline-start' could be missed if the "main"
+;;;	fontification did not run due to the keyword being already fontified.
+;;; `cperl-pod-spell':		Return t from do-one-chunk function
+;;; `cperl-map-pods-heres':	Stop when the worker returns nil
+;;;				Call `cperl-update-syntaxification'
+;;; `cperl-get-here-doc-region': Call `cperl-update-syntaxification'
+;;; `cperl-get-here-doc-delim':	Remove unused function
+
+;;; After 5.11:
+
+;;;  The possible lockup of Emacs (introduced in 5.10) fixed
+
+;;; `cperl-unwind-to-safe':	`cperl-beginning-of-property' won't return nil
+;;; `cperl-syntaxify-for-menu':	New customization variable
+;;; `cperl-select-this-pod-or-here-doc': New function
+;;; `cperl-get-here-doc-region': Extra argument.
+;;;				Do not adjust pos by 1.
+
+;;; New menu entries (Perl/Tools): selection of current POD or HERE-DOC section
+;;;				(Debugging CPerl:) backtrace on fontification
+
 ;;; Code:
 
 
@@ -1854,6 +1895,13 @@ One should tune up `cperl-close-paren-offset' as well."
   t
   "*Non-nil means that CPerl unwinds to a start of a long construction
 when syntaxifying a chunk of buffer."
+  :type 'boolean
+  :group 'cperl-speed)
+
+(defcustom cperl-syntaxify-for-menu
+  t
+  "*Non-nil means that CPerl syntaxifies up to the point before showing menu.
+This way enabling/disabling of menu items is more correct."
   :type 'boolean
   :group 'cperl-speed)
 
@@ -2538,14 +2586,33 @@ versions of Emacs."
 	  ["Imenu on Perl Info" cperl-imenu-on-info (featurep 'imenu)]
 	  "----"
 	  ["Ispell PODs" cperl-pod-spell
+	   ;; Better not to update syntaxification here:
+	   ;; debugging syntaxificatio can be broken by this???
 	   (or
 	    (get-text-property (point-min) 'in-pod)
-	    (< (next-single-property-change (point-min) 'in-pod nil (point-max))
+	    (< (progn
+		 (and cperl-syntaxify-for-menu
+		      (cperl-update-syntaxification (point-max) (point-max)))
+		 (next-single-property-change (point-min) 'in-pod nil (point-max)))
 	       (point-max)))]
 	  ["Ispell HERE-DOCs" cperl-here-doc-spell
-	   (< (next-single-property-change (point-min) 'here-doc-group nil (point-max)) (point-max))]
+	   (< (progn
+		(and cperl-syntaxify-for-menu
+		     (cperl-update-syntaxification (point-max) (point-max)))
+		(next-single-property-change (point-min) 'here-doc-group nil (point-max)))
+	      (point-max))]
 	  ["Narrow to this HERE-DOC" cperl-narrow-to-here-doc
-	   (eq 'here-doc  (get-text-property (point) 'syntax-type))]
+	   (eq 'here-doc  (progn
+		(and cperl-syntaxify-for-menu
+		     (cperl-update-syntaxification (point) (point)))
+		(get-text-property (point) 'syntax-type)))]
+	  ["Select this HERE-DOC or POD section"
+	   cperl-select-this-pod-or-here-doc
+	   (memq (progn
+		   (and cperl-syntaxify-for-menu
+			(cperl-update-syntaxification (point) (point)))
+		   (get-text-property (point) 'syntax-type))
+		 '(here-doc pod))]
 	  "----"
 	  ["CPerl pretty print (exprmntl)" cperl-ps-print
 	   (fboundp 'ps-extend-face-list)]
@@ -2553,6 +2620,8 @@ versions of Emacs."
 	  ["Profile syntaxification" cperl-time-fontification t]
 	  ["Debug errors in delayed fontification" cperl-emulate-lazy-lock t]
 	  ["Debug unwind for syntactic scan" cperl-toggle-set-debug-unwind t]
+	  ["Debug backtrace on syntactic scan (BEWARE!!!)"
+	   (cperl-toggle-set-debug-unwind nil t) t]
 	  "----"
 	  ["Class Hierarchy from TAGS" cperl-tags-hier-init t]
 	  ;;["Update classes" (cperl-tags-hier-init t) tags-table-list]
@@ -2749,6 +2818,7 @@ the last)."
 (defvar cperl-font-lock-multiline-start nil)
 (defvar cperl-font-lock-multiline nil)
 (defvar cperl-compilation-error-regexp-alist nil)
+(defvar cperl-font-locking nil)
 
 ;;;###autoload
 (defun cperl-mode ()
@@ -2962,6 +3032,7 @@ or as help on variables `cperl-tips', `cperl-problems',
   (set-syntax-table cperl-mode-syntax-table)
   ;; Until Emacs is multi-threaded, we do not actually need it local:
   (make-local-variable 'cperl-font-lock-multiline-start)
+  (make-local-variable 'cperl-font-locking)
   (make-local-variable 'outline-regexp)
   ;; (setq outline-regexp imenu-example--function-name-regexp-perl)
   (setq outline-regexp cperl-outline-regexp)
@@ -3919,6 +3990,22 @@ Return the amount the indentation changed by."
 
 (defvar cperl-look-for-prop '((pod in-pod) (here-doc-delim here-doc-group)))
 
+(defun cperl-beginning-of-property (p prop &optional lim)
+  "Given that P has a property PROP, find where the property starts.
+Will not look before LIM."
+  ;;; XXXX What to do at point-max???
+  (or (previous-single-property-change (cperl-1+ p) prop lim)
+      (point-min))
+;;;  (cond ((eq p (point-min))
+;;;	 p)
+;;;	((and lim (<= p lim))
+;;;	 p)
+;;;	((not (get-text-property (1- p) prop))
+;;;	 p)
+;;;	(t (or (previous-single-property-change p look-prop lim)
+;;;	       (point-min))))
+  )
+
 (defun cperl-calculate-indent (&optional parse-data) ; was parse-start
   "Return appropriate indentation for current line as Perl code.
 In usual case returns an integer: the column to indent to.
@@ -3961,8 +4048,7 @@ and closing parentheses and brackets."
 				'syntax-type))
 	    (if (memq prop '(pod here-doc format here-doc-delim))
 		(progn
-		  (goto-char (or (previous-single-property-change p look-prop)
-				 (point-min)))
+		  (goto-char (cperl-beginning-of-property p look-prop))
 		  (beginning-of-line)
 		  (setq pre-indent-point (point)))))))
 	(goto-char pre-indent-point)
@@ -3990,8 +4076,8 @@ and closing parentheses and brackets."
 		 (setq delim		; We do not close the expression
 		       (get-text-property
 			(cperl-1+ char-after-pos) 'indentable)
-		       p (1+ (previous-single-property-change
-				       (point) 'indentable))
+		       p (1+ (cperl-beginning-of-property
+			      (point) 'indentable))
 		       is-block 
 		       (save-excursion	; Find preceeding line
 			 (cperl-backward-to-noncomment p)
@@ -4255,7 +4341,7 @@ and closing parentheses and brackets."
 			      (or
 			       (and (get-text-property (point) 'attrib-group)
 				    (goto-char
-				     (previous-single-property-change
+				     (cperl-beginning-of-property
 				      (point) 'attrib-group)))
 			       (and (eq (preceding-char) ?b)
 				    (progn
@@ -4467,9 +4553,11 @@ Returns true if comment is found.  In POD will not move the point."
   ;; If the line is inside other syntax groups (qq-style strings, HERE-docs)
   ;; then looks for literal # or end-of-line.
   (let (state stop-in cpoint (lim (progn (end-of-line) (point))) pr e)
+    (or cperl-font-locking
+	(cperl-update-syntaxification lim lim))
     (beginning-of-line)
     (if (setq pr (get-text-property (point) 'syntax-type))
-	(setq e (next-single-property-change (point) 'syntax-type)))
+	(setq e (next-single-property-change (point) 'syntax-type nil (point-max))))
     (if (or (eq pr 'pod)
 	    (if (or (not e) (> e lim))	; deep inside a group
 		(re-search-forward "\\=[ \t]*\\(#\\|$\\)" lim t)))
@@ -4686,11 +4774,14 @@ is quoting."
 
 (defun cperl-unwind-to-safe (before &optional end)
   ;; if BEFORE, go to the previous start-of-line on each step of unwinding
-  (let ((pos (point)))
+  (let ((pos (point)) opos)
     (while (and pos (progn
 		      (beginning-of-line)
 		      (get-text-property (setq pos (point)) 'syntax-type)))
-      (setq pos (previous-single-property-change pos 'syntax-type))
+      (setq opos pos
+	    pos (cperl-beginning-of-property pos 'syntax-type))
+      (if (eq pos (point-min))
+	  (setq pos nil))
       (if pos
 	  (if before
 	      (progn
@@ -4710,7 +4801,7 @@ is quoting."
 	(save-excursion
 	  (while (and end (get-text-property end 'syntax-type))
 	    (setq pos end
-		  end (next-single-property-change end 'syntax-type))
+		  end (next-single-property-change end 'syntax-type nil (point-max)))
 	    (if end (progn (goto-char end)
 			   (or (bolp) (forward-line 1))
 			   (setq end (point)))))
@@ -4785,6 +4876,7 @@ Should be called with the point before leading colon of an attribute."
     (if reset-st
 	(set-syntax-table reset-st))))
 
+;;; Debugging this may require (setq max-specpdl-size 2000)...
 (defun cperl-find-pods-heres (&optional min max non-inter end ignore-max end-of-here-doc)
   "Scans the buffer for hard-to-parse Perl constructions.
 If `cperl-pod-here-fontify' is not-nil after evaluation, will fontify
@@ -4801,6 +4893,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 	 (case-fold-search nil) (inhibit-read-only t) (buffer-undo-list t)
 	 (modified (buffer-modified-p)) overshoot
 	 (after-change-functions nil)
+	 (cperl-font-locking t)
 	 (use-syntax-state (and cperl-syntax-state
 				(>= min (car cperl-syntax-state))))
 	 (state-point (if use-syntax-state
@@ -5734,12 +5827,12 @@ CHARS is a string that contains good characters to have before us (however,
 	(if (get-text-property (point) 'here-doc-group)
 	    (progn
 	      (goto-char
-	       (previous-single-property-change (point) 'here-doc-group))
+	       (cperl-beginning-of-property (point) 'here-doc-group))
 	      (beginning-of-line 0)))
 	(if (get-text-property (point) 'in-pod)
 	    (progn
 	      (goto-char
-	       (previous-single-property-change (point) 'in-pod))
+	       (cperl-beginning-of-property (point) 'in-pod))
 	      (beginning-of-line 0)))
 	(if (looking-at "^[ \t]*\\(#\\|$\\)") nil ; Only comment, skip
 	  ;; Else: last iteration, or a label
@@ -6671,12 +6764,17 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			(, (if cperl-font-lock-multiline
 			       nil
 			     '(progn	; Do at end
-				(if (> 2 (count-lines
-					  cperl-font-lock-multiline-start (point)))
+				;; "my" may be already fontified (POD),
+				;; so cperl-font-lock-multiline-start is nil
+				(if (or (not cperl-font-lock-multiline-start)
+					(> 2 (count-lines
+					      cperl-font-lock-multiline-start
+					      (point))))
 				    nil
 				  (put-text-property
 				   (1+ cperl-font-lock-multiline-start) (point)
-				   'syntax-type 'multiline)))))
+				   'syntax-type 'multiline))
+				(setq cperl-font-lock-multiline-start nil))))
 			(3 font-lock-variable-name-face)))))
 		  (t '("^[ \t{}]*\\(my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
 		       3 font-lock-variable-name-face)))
@@ -7454,7 +7552,7 @@ Delay of auto-help controlled by `cperl-lazy-help-time'."
   (message "indent-region/indent-sexp will %sbe automatically fix whitespace."
 	   (if cperl-indent-region-fix-constructs "" "not ")))
 
-(defun cperl-toggle-set-debug-unwind (arg)
+(defun cperl-toggle-set-debug-unwind (arg &optional backtrace)
   "Toggle (or, with numeric argument, set) debugging state of syntaxification.
 Nonpositive numeric argument disables debugging messages.  The message
 summarizes which regions it was decided to rescan for syntactic constructs.
@@ -7470,11 +7568,12 @@ construct.  DONE-TO and STATEPOS indicate changes to internal caches maintained
 by CPerl."
   (interactive "P")
   (or arg
-      (setq arg (if (eq cperl-syntaxify-by-font-lock 'message) 0 1)))
-  (setq cperl-syntaxify-by-font-lock
-	(if (> arg 0) 'message t))
+      (setq arg (if (eq cperl-syntaxify-by-font-lock 
+			(if backtrace 'backtrace 'message)) 0 1)))
+  (setq arg (if (> arg 0) (if backtrace 'backtrace 'message) t))
+  (setq cperl-syntaxify-by-font-lock arg)
   (message "Debugging messages of syntax unwind %sabled."
-	   (if (> arg 0) "en" "dis")))
+	   (if (eq arg t) "dis" "en")))
 
 ;;;; Tags file creation.
 
@@ -9124,8 +9223,8 @@ If a region is highlighted, restricts to the region."
   (cperl-pod-spell t beg end))
 
 (defun cperl-pod-spell (&optional do-heres beg end)
-  "Spell-check pod documentation.
-If invoked with prefix argument, will do here-docs instead.
+  "Spell-check POD documentation.
+If invoked with prefix argument, will do HERE-DOCs instead.
 If a region is highlighted, restricts to the region."
   (interactive "P")
   (save-excursion
@@ -9143,50 +9242,44 @@ If a region is highlighted, restricts to the region."
 					     (forward-line -1)
 					     (point))))
 			       (ispell-region s e)
-			       ))
+			       t))
 			    (if do-heres 'here-doc-group 'in-pod)
 			    beg end))))
 
 (defun cperl-map-pods-heres (func &optional prop s end)
   "Executes a function over regions of pods or here-documents.
-PROP is the text-property to search for; default to `in-pod'."
-  (let (pos posend has-prop)
+PROP is the text-property to search for; default to `in-pod'.  Stop when
+function returns nil."
+  (let (pos posend has-prop (cont t))
     (or prop (setq prop 'in-pod))
     (or s (setq s (point-min)))
     (or end (setq end (point-max)))
+    (cperl-update-syntaxification end end)
     (save-excursion
       (goto-char (setq pos s))
-      (while (< pos end)
+      (while (and cont (< pos end))
 	(setq has-prop (get-text-property pos prop))
 	(setq posend (next-single-property-change pos prop nil end))
-	(and has-prop (funcall func pos posend prop))
+	(and has-prop
+	     (setq cont (funcall func pos posend prop)))
 	(setq pos posend)))))
 
 ;;; Based on code by Masatake YAMATO:
-(defun cperl-get-here-doc-region (&optional pos)
-  "Return here document region around the point.
-Return nil if the point is not in a here document region."
+(defun cperl-get-here-doc-region (&optional pos pod)
+  "Return HERE document region around the point.
+Return nil if the point is not in a HERE document region.  If POD is non-nil,
+will return a POD section if point is in a POD section."
   (or pos (setq pos (point)))
-  (if (eq 'here-doc  (get-text-property pos 'syntax-type))
-      (let ((b (previous-single-property-change pos 'syntax-type))
+  (cperl-update-syntaxification pos pos)
+  (if (or (eq 'here-doc  (get-text-property pos 'syntax-type))
+	  (and pod
+	       (eq 'pod (get-text-property pos 'syntax-type))))
+      (let ((b (cperl-beginning-of-property pos 'syntax-type))
 	    (e (next-single-property-change pos 'syntax-type)))
-	(setq b (or b (point-min)))
-	(setq e (if e (1- e) (point-max)))
-	(cons b e))))
-
-;;; Needed by `narrow-to-here-document'
-(defun cperl-get-here-doc-delim (&optional pos)
-  "Return the delimiter of here document region around the point.
-Return nil if the point is not in a here document region.
-'EOF' is a typical delimiter. "
-  (or pos (setq pos (point)))
-  (if (eq 'here-doc (get-text-property pos 'syntax-type))
-      (let* ((b (next-single-property-change pos 'syntax-type))
-	     (e (if b (next-single-property-change b 'syntax-type))))
-	(and b (buffer-substring b (or e (point-max)))))))
+	(cons b (or e (point-max))))))
 
 (defun cperl-narrow-to-here-doc (&optional pos)
-  "Narrows editing region to the hear-doc at POS.
+  "Narrows editing region to the HERE-DOC at POS.
 POS defaults to the point."
   (interactive "d")
   (or pos (setq pos (point)))
@@ -9195,6 +9288,17 @@ POS defaults to the point."
     (narrow-to-region (car p) (cdr p))
     (message
      "When you are finished with narrow editing, type C-x n w")))
+
+(defun cperl-select-this-pod-or-here-doc (&optional pos)
+  "Select the HERE-DOC (or POD section) at POS.
+POS defaults to the point."
+  (interactive "d")
+  (let ((p (cperl-get-here-doc-region pos t)))
+    (if p
+	(progn
+	  (goto-char (car p))
+	  (push-mark (cdr p) nil t))	; Message, activate in transient-mode
+      (message "I do not think POS is in POD or a HERE-doc..."))))
 
 (defun cperl-facemenu-add-face-function (face end)
   "A callback to process user-initiated font-change requests.
@@ -9337,7 +9441,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 		  (beginning-of-line)
 		  (eq (get-text-property (setq beg (point)) 'syntax-type)
 		      'multiline)))
-      (if (setq beg (previous-single-property-change beg 'syntax-type))
+      (if (setq beg (cperl-beginning-of-property beg 'syntax-type))
 	  (goto-char beg)))
     (setq beg (point))
     (goto-char end)
@@ -9347,8 +9451,8 @@ do extra unwind via `cperl-unwind-to-safe'."
 				 (forward-line 1)))
 		  (eq (get-text-property (setq end (point)) 'syntax-type)
 		      'multiline)))
-      (if (setq end (next-single-property-change end 'syntax-type))
-	  (goto-char end)))
+      (setq end (next-single-property-change end 'syntax-type nil (point-max)))
+      (goto-char end))
     (setq end (point)))
   (font-lock-default-fontify-region beg end loudly))
 
@@ -9358,7 +9462,12 @@ do extra unwind via `cperl-unwind-to-safe'."
   ;; (message "Syntaxifying...")
   (let ((dbg (point)) (iend end) (idone cperl-syntax-done-to)
 	(istate (car cperl-syntax-state))
-	start from-start)
+	start from-start edebug-backtrace-buffer)
+    (if (eq cperl-syntaxify-by-font-lock 'backtrace)
+	(progn
+	  (require 'edebug)
+	  (let ((f 'edebug-backtrace))
+	    (funcall f))))	; Avoid compile-time warning
     (or cperl-syntax-done-to
 	(setq cperl-syntax-done-to (point-min)
 	      from-start t))
@@ -9376,7 +9485,7 @@ do extra unwind via `cperl-unwind-to-safe'."
     (and (> end start)
 	 (setq cperl-syntax-done-to start) ; In case what follows fails
 	 (cperl-find-pods-heres start end t nil t))
-    (if (eq cperl-syntaxify-by-font-lock 'message)
+    (if (memq cperl-syntaxify-by-font-lock '(backtrace message))
 	(message "Syxify req=%s..%s actual=%s..%s done-to: %s=>%s statepos: %s=>%s"
 		 dbg iend start end idone cperl-syntax-done-to
 		 istate (car cperl-syntax-state))) ; For debugging
@@ -9386,8 +9495,8 @@ do extra unwind via `cperl-unwind-to-safe'."
   (let ((pos (point-min)) prop posend)
     (setq end (point-max))
     (while (< pos end)
-      (setq prop (get-text-property pos 'cperl-postpone))
-      (setq posend (next-single-property-change pos 'cperl-postpone nil end))
+      (setq prop (get-text-property pos 'cperl-postpone)
+	    posend (next-single-property-change pos 'cperl-postpone nil end))
       (and prop (put-text-property pos posend (car prop) (cdr prop)))
       (setq pos posend)))
   nil)					; Do not iterate
@@ -9397,7 +9506,8 @@ do extra unwind via `cperl-unwind-to-safe'."
   ;; do to the end of buffer, not to END;;; likewise, start earlier if needed
   (let* ((pos (point)) (prop (get-text-property pos 'cperl-postpone)) posend)
     (if prop
-	(setq pos (or (previous-single-property-change (cperl-1+ pos) 'cperl-postpone)
+	(setq pos (or (cperl-beginning-of-property
+		       (cperl-1+ pos) 'cperl-postpone)
 		      (point-min))))
     (while (< pos end)
       (setq posend (next-single-property-change pos 'cperl-postpone))
@@ -9424,7 +9534,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 5.10 $"))
+  (let ((v  "$Revision: 5.12 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
