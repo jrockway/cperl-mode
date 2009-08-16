@@ -1544,6 +1544,7 @@
       (defvar paren-backwards-message)	; Not in newer XEmacs?
       (defvar vc-rcs-header)		; likewise?
       (defvar vc-sccs-header)		; likewise?
+      (defvar compilation-error-regexp-alist) ; used in Emacs 22
       (or (fboundp 'defgroup)
 	  (defmacro defgroup (name val doc &rest arr)
 	    nil))
