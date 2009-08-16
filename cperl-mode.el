@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.23 2007/02/15 11:34:23 vera Exp vera $
+;; $Id: cperl-mode.el,v 5.24 2008/01/19 22:46:45 vera Exp $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -64,6 +64,13 @@
 ;; DO NOT FORGET to read micro-docs (available from `Perl' menu)   <<<<<<
 ;; or as help on variables `cperl-tips', `cperl-problems',         <<<<<<
 ;; `cperl-non-problems', `cperl-praise', `cperl-speed'.            <<<<<<
+
+;;; Note also that there are "authoritative" version of this file  <<<<<<
+;;; (available on http://ilyaz.org/software/emacs/), and versions  <<<<<<
+;;; "customized" for a particular Emacs distribution by Emacs      <<<<<<
+;;; maintainers themselves.  As expected, the "authoritative"      <<<<<<
+;;; version is known to be much less buggy.  Usually the           <<<<<<
+;;; maintainers add a verbiage after numbers in `cperl-version'.   <<<<<<
 
 ;; Additional useful commands to put into your .emacs file (before
 ;; RMS Emacs 20.3):
@@ -1495,13 +1502,34 @@
 ;;; `cperl-backward-to-noncomment': Would go too far when skipping POD/HEREs
 ;;; `cperl-sniff-for-indent':	[string] and [comment] were inverted
 ;;;				When looking for label, skip s:m:y:tr
-;;; `cperl-indent-line':	Likewise.
+;;; `cperl-indent-line':	Likewise
 ;;; `cperl-mode':		`font-lock-multiline' was assumed auto-local
 ;;; `cperl-windowed-init':	Wrong `ps-print' handling
 ;;;				 (both thanks to Chong Yidong)
 ;;; `cperl-look-at-leading-count': Could fail with unfinished RExen
 ;;; `cperl-find-pods-heres':	If the second part of s()[] is missing,
 ;;;					could try to highlight delimiters...
+
+;;; After 5.23:
+;;; toplevel:			Add comment on existence of different flavors
+;;; `cperl-string-syntax-table': Was treating quotes as special
+;;; Mode menu:			Add "Report indentation context"
+;;; `cperl-sniff-for-indent':	Update comments
+;;; `cperl-make-regexp-x':	Was treating qr wrong
+;;; `cperl-fill-paragraph': 	v22.1 needs `save-excursion' (XXXX BUG???)
+;;;					(Thanks to Pete Harlan)
+;;; `cperl-build-manpage':	set `Man-switches' for use in
+;;;					`Man-getpage-in-background'
+;;; `cperl-perldoc':		Likewise (Thanks to Alexander Haeckel)
+;;; `cperl-beautify-regexp-piece': Allow for indentation of (?:)-group
+;;; `cperl-beautify-level':	Likewise
+;;; `cperl-mode':		`compilation-error-regexp-alist-alist'
+;;;					is defined in Emacs22, with different
+;;;					semantic than in XEmacs21
+;;;					(Thanks to Mark T. Kennedy)
+;;; toplevel:			Need to defvar `compilation-error-regexp-alist'
+;;; `cperl-find-pods-heres':	Check for misparse treated s/a// as misparse
+;;; `cperl-forward-re':		Do not print "unmatched" during electric {
 
 ;;; Code:
 
@@ -1528,6 +1556,7 @@
       (defvar paren-backwards-message)	; Not in newer XEmacs?
       (defvar vc-rcs-header)		; likewise?
       (defvar vc-sccs-header)		; likewise?
+      (defvar compilation-error-regexp-alist) ; used in Emacs 22
       (or (fboundp 'defgroup)
 	  (defmacro defgroup (name val doc &rest arr)
 	    nil))
@@ -2820,6 +2849,9 @@ versions of Emacs."
 	  ["Debug backtrace on syntactic scan (BEWARE!!!)"
 	   (cperl-toggle-set-debug-unwind nil t) t]
 	  "----"
+	  ["Report indentation context"
+	   (message "%s" (cperl-sniff-for-indent)) t]
+	  "----"
 	  ["Class Hierarchy from TAGS" cperl-tags-hier-init t]
 	  ;;["Update classes" (cperl-tags-hier-init t) tags-table-list]
 	  ("Tags"
@@ -3002,6 +3034,9 @@ the last)."
   (modify-syntax-entry ?$ "." cperl-string-syntax-table)
   (modify-syntax-entry ?\{ "." cperl-string-syntax-table)
   (modify-syntax-entry ?\} "." cperl-string-syntax-table)
+  (modify-syntax-entry ?\" "." cperl-string-syntax-table)
+  (modify-syntax-entry ?' "." cperl-string-syntax-table)
+  (modify-syntax-entry ?` "." cperl-string-syntax-table)
   (modify-syntax-entry ?# "." cperl-string-syntax-table)) ; (?# comment )
 
 
@@ -3314,13 +3349,16 @@ or as help on variables `cperl-tips', `cperl-problems',
   (set 'vc-header-alist (or cperl-vc-header-alist ; Avoid warning
 			    (` ((SCCS (, (car cperl-vc-sccs-header)))
 				     (RCS (, (car cperl-vc-rcs-header)))))))
-  (cond ((boundp 'compilation-error-regexp-alist-alist);; xemacs 20.x
+  (cond ((boundp 'compilation-error-regexp-alist-alist);; xemacs 20.x, emacs22
 	 (make-local-variable 'compilation-error-regexp-alist-alist)
 	 (set 'compilation-error-regexp-alist-alist
 	      (cons (cons 'cperl cperl-compilation-error-regexp-alist)
 		    (symbol-value 'compilation-error-regexp-alist-alist)))
-	 (let ((f 'compilation-build-compilation-error-regexp-alist))
-	   (funcall f)))
+	 (if (fboundp 'compilation-build-compilation-error-regexp-alist)
+	     (let ((f 'compilation-build-compilation-error-regexp-alist))
+	       (funcall f))		; xemacs 20.x
+	   (make-local-variable 'compilation-error-regexp-alist) ; emacs22
+	   (push 'cperl compilation-error-regexp-alist)))
 	((boundp 'compilation-error-regexp-alist);; xmeacs 19.x
 	 (make-local-variable 'compilation-error-regexp-alist)
 	 (set 'compilation-error-regexp-alist
@@ -3599,7 +3637,9 @@ char is \"{\", insert extra newline before only if
 	    (save-excursion
 	      (goto-char insertpos)
 	      (self-insert-command (prefix-numeric-value arg)))
-	  (self-insert-command (prefix-numeric-value arg)))))))
+	  (self-insert-command (prefix-numeric-value arg))
+	  ;;;(insert (make-string (prefix-numeric-value arg) last-command-char))
+	  )))))
 
 (defun cperl-electric-lbrace (arg &optional end)
   "Insert character, correct line's indentation, correct quoting by space."
@@ -4235,11 +4275,7 @@ Will not look before LIM."
   )
 
 (defun cperl-sniff-for-indent (&optional parse-data) ; was parse-start
-  ;; Old workhorse for calculation of indentation; the major problem
-  ;; is that it mixes the sniffer logic to understand what the current line
-  ;; MEANS with the logic to actually calculate where to indent it.
-  ;; The latter part should be eventually moved to `cperl-calculate-indent';
-  ;; actually, this is mostly done now...
+  ;; the sniffer logic to understand what the current line MEANS.
   (cperl-update-syntaxification (point) (point))
   (let ((res (get-text-property (point) 'syntax-type)))
     (save-excursion
@@ -4904,6 +4940,10 @@ modify syntax-type text property if the situation is too hard."
 	     (if reset-st
 		 (set-syntax-table reset-st))
 	     (or end
+		 (and
+		      cperl-brace-recursing 
+		      (or (eq ostart  ?\{)
+			  (eq starter ?\{)))
 		 (message
 		  "End of `%s%s%c ... %c' string/RE not found: %s"
 		  argument
@@ -5794,10 +5834,12 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			;; Process RExen: embedded comments, charclasses and ]
 ;;;/\3333\xFg\x{FFF}a\ppp\PPP\qqq\C\99f(?{  foo  })(??{  foo  })/;
 ;;;/a\.b[^a[:ff:]b]x$ab->$[|$,$ab->[cd]->[ef]|$ab[xy].|^${a,b}{c,d}/;
-;;;/(?<=foo)(?<!bar)(x)(?:$ab|\$\/)$|\\\b\x888\776\[\:$/xxx;
+;;;/(?<=foo)(?<!bar)(x")(?:$ab|\$\/)$|\\\b\x888\776\[\:$/xxx;
 ;;;m?(\?\?{b,a})? + m/(??{aa})(?(?=xx)aa|bb)(?#aac)/;
 ;;;m$(^ab[c]\$)$ + m+(^ab[c]\$\+)+ + m](^ab[c\]$|.+)] + m)(^ab[c]$|.+\));
-;;;m^a[\^b]c^ + m.a[^b]\.c.;
+;;;s{a}{};
+;;;s/a//;
+;;;m^a[\^b]c^ + m.a[^b]\.c.;						#  OK
 			(save-excursion
 			  (goto-char (1+ b))
 			  ;; First 
@@ -6140,7 +6182,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		    (if (and is-REx is-x-REx)
 			(put-text-property (1+ b) (1- e)
 					   'syntax-subtype 'x-REx)))
-		  (if (and i2 e1 b1 (> e1 b1))
+		  (if (and i2 e1 (or (not b1) (> e1 b1)))
 		      (progn		; No errors finding the second part...
 			(cperl-postpone-fontification
 			 (1- e1) e1 'face my-cperl-delimiters-face)
@@ -6845,15 +6887,16 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	   (point)))
 	;; Remove existing hashes
 	(goto-char (point-min))
-	(while (progn (forward-line 1) (< (point) (point-max)))
-	  (skip-chars-forward " \t")
-	  (if (looking-at "#+")
-	      (progn
-		(if (and (eq (point) (match-beginning 0))
-			 (not (eq (point) (match-end 0)))) nil
+	(save-excursion			; By some strange reason:needed in 22.1
+	  (while (progn (forward-line 1) (< (point) (point-max)))
+	    (skip-chars-forward " \t")
+	    (if (looking-at "#+")
+		(progn
+		  (if (and (eq (point) (match-beginning 0))
+			   (not (eq (point) (match-end 0)))) nil
 		    (error
- "Bug in Emacs: `looking-at' in `narrow-to-region': match-data is garbage"))
-		(delete-char (- (match-end 0) (match-beginning 0))))))
+		     "Bug in Emacs: `looking-at' in `narrow-to-region': match-data is garbage"))
+		  (delete-char (- (match-end 0) (match-beginning 0)))))))
 
 	;; Lines with only hashes on them can be paragraph boundaries.
 	(let ((paragraph-start (concat paragraph-start "\\|^[ \t#]*$"))
@@ -9496,21 +9539,23 @@ prototype \&SUB	Returns prototype of the function given a reference.
   ;; LEVEL shows how many levels deep to go
   ;; position at enter and at leave is not defined
   (let (s c tmp (m (make-marker)) (m1 (make-marker)) c1 spaces inline code pos)
-    (if (not embed)
-	(goto-char (1+ b))
-      (goto-char b)
-      (cond ((looking-at "(\\?\\\\#")	;  (?#) wrongly commented when //x-ing
-	     (forward-char 2)
-	     (delete-char 1)
-	     (forward-char 1))
-	    ((looking-at "(\\?[^a-zA-Z]")
-	     (forward-char 3))
-	    ((looking-at "(\\?")	; (?i)
-	     (forward-char 2))
-	    (t
-	     (forward-char 1))))
-    (setq c (if embed (current-indentation) (1- (current-column)))
-	  c1 (+ c (or cperl-regexp-indent-step cperl-indent-level)))
+    (if embed
+	(progn
+	  (goto-char b)
+	  (setq c (if (eq embed t) (current-indentation) (current-column)))
+	  (cond ((looking-at "(\\?\\\\#") ; (?#) wrongly commented when //x-ing
+		 (forward-char 2)
+		 (delete-char 1)
+		 (forward-char 1))
+		((looking-at "(\\?[^a-zA-Z]")
+		 (forward-char 3))
+		((looking-at "(\\?")	; (?i)
+		 (forward-char 2))
+		(t
+		 (forward-char 1))))
+      (goto-char (1+ b))
+      (setq c (1- (current-column))))
+    (setq c1 (+ c (or cperl-regexp-indent-step cperl-indent-level)))
     (or (looking-at "[ \t]*[\n#]")
 	(progn
 	  (insert "\n")))
@@ -9683,8 +9728,10 @@ prototype \&SUB	Returns prototype of the function given a reference.
     ;; Find the start
     (if (looking-at "\\s|")
 	nil				; good already
-      (if (looking-at "\\([smy]\\|qr\\)\\s|")
-	  (forward-char 1)
+      (if (or (looking-at "\\([smy]\\|qr\\)\\s|")
+	      (and (eq (preceding-char) ?q)
+		   (looking-at "\\(r\\)\\s|")))
+	  (goto-char (match-end 1))
 	(re-search-backward "\\s|")))	; Assume it is scanned already.
     ;;(forward-char 1)
     (let ((b (point)) (e (make-marker)) have-x delim (c (current-column))
@@ -9787,7 +9834,7 @@ We suppose that the regexp is scanned already."
     (let ((b (point)) (e (make-marker)))
       (forward-sexp 1)
       (set-marker e (1- (point)))
-      (cperl-beautify-regexp-piece b e nil deep))))
+      (cperl-beautify-regexp-piece b e 'level deep))))
 
 (defun cperl-invert-if-unless-modifiers ()
   "Change `B if A;' into `if (A) {B}' etc if possible.
@@ -10002,6 +10049,7 @@ the appropriate statement modifier."
 				 (documentation-property
 				  'cperl-short-docs
 				  'variable-documentation))))
+	 (Man-switches "")
 	 (manual-program (if is-func "perldoc -f" "perldoc")))
     (cond
      (cperl-xemacs-p
@@ -10009,7 +10057,7 @@ the appropriate statement modifier."
 	    (Manual-switches (if is-func (list "-f"))))
 	(manual-entry word)))
      (t
-      (Man-getpage-in-background word)))))
+      (Man-getpage-in-background word))))) ; uses `Man-switches'
 
 ;;;###autoload
 (defun cperl-perldoc-at-point ()
@@ -10050,7 +10098,8 @@ the appropriate statement modifier."
     (let ((Manual-program "perldoc"))
       (manual-entry buffer-file-name)))
    (t
-    (let* ((manual-program "perldoc"))
+    (let* ((manual-program "perldoc")
+	   (Man-switches ""))
       (Man-getpage-in-background buffer-file-name)))))
 
 (defun cperl-pod2man-build-command ()
@@ -10431,7 +10480,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 5.23 $"))
+  (let ((v  "$Revision: 5.24 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
