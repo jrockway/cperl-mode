@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.13 2005/11/01 03:17:09 vera Exp vera $
+;; $Id: cperl-mode.el,v 5.14 2005/11/09 07:15:39 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1367,6 +1367,19 @@
 ;;; `cperl-forward-group-in-re': New function
 ;;; `cperl-find-pods-heres':	Find and highlight (?{}) blocks in RExen.
 ;;;	(XXXX Temporary (?) hack is to syntax-mark them as comment)
+
+;;; After 5.13:
+;;; `cperl-string-syntax-table': Make { and } not-grouping
+;;;   (Sometimes they ARE grouping in RExen, but matching them would only
+;;;    confuse in many situations when they are not).
+;;; `beginning-of-buffer':	Replaced two occurences with goto-char...
+;;; `cperl-calculate-indent':	`char-after' could be nil...
+;;; `cperl-find-pods-heres':	REx can start after "[" too
+;;;				Hightlight (??{}) in RExen too 
+;;; `cperl-maybe-white-and-comment-rex': New constant
+;;; `cperl-white-and-comment-rex': Likewise
+;;;				XXXX Not very efficient, but hard to make
+;;;				better while keeping 1 group.
 
 ;;; Code:
 
@@ -2703,6 +2716,17 @@ versions of Emacs."
 The expansion is entirely correct because it uses the C preprocessor."
   t)
 
+;;; These two must be unwound, otherwise take exponential time
+(defconst cperl-maybe-white-and-comment-rex "[ \t\n]*\\(#[^\n]*\n[ \t\n]*\\)*"
+"Regular expression to match optional whitespace with interpspersed comments.
+Should contain exactly one group.")
+
+;;; This one is tricky to unwind; still very inefficient...
+(defconst cperl-white-and-comment-rex "\\([ \t\n]\\|#[^\n]*\n\\)+"
+"Regular expression to match whitespace with interpspersed comments.
+Should contain exactly one group.")
+
+
 ;;; Is incorporated in `cperl-imenu--function-name-regexp-perl'
 ;;; `cperl-outline-regexp', `defun-prompt-regexp'.
 ;;; Details of groups in this may be used in several functions; see comments
@@ -2715,26 +2739,26 @@ of attributes (if present), or end of the name or prototype (whatever is
 the last)."
   (concat				; Assume n groups before this...
    "\\("				; n+1=name-group
-     "\\([ \t\n]+\\|#[^\n]*\n\\)+"	; n+2=pre-name
+     cperl-white-and-comment-rex	; n+2=pre-name
      "\\(::[a-zA-Z_0-9:']+\\|[a-zA-Z_'][a-zA-Z_0-9:']*\\)" ; n+3=name
    "\\)"				; END n+1=name-group
    (if named "" "?")
    "\\("				; n+4=proto-group
-     "\\([ \t\n]+\\|#[^\n]*\n\\)*"	; n+5=pre-proto
+     cperl-maybe-white-and-comment-rex	; n+5=pre-proto
      "\\(([^()]*)\\)"			; n+6=prototype
    "\\)?"				; END n+4=proto-group
    "\\("				; n+7=attr-group
-     "\\([ \t\n]+\\|#[^\n]*\n\\)*"	; n+8=pre-attr
+     cperl-maybe-white-and-comment-rex	; n+8=pre-attr
      "\\("				; n+9=start-attr
         ":"
 	(if attr (concat
 		  "\\("
-		     "\\([ \t\n]+\\|#[^\n]*\n\\)*" ; whitespace-comments
+		     cperl-maybe-white-and-comment-rex ; whitespace-comments
 		     "\\(\\sw\\|_\\)+"	; attr-name
 		     ;; attr-arg (1 level of internal parens allowed!)
 		     "\\((\\(\\\\.\\|[^\\\\()]\\|([^\\\\()]*)\\)*)\\)?"
 		     "\\("		; optional : (XXX allows trailing???)
-		        "\\([ \t\n]+\\|#[^\n]*\n\\)*" ; whitespace-comments
+		        cperl-maybe-white-and-comment-rex ; whitespace-comments
 		     ":\\)?"
 		  "\\)+")
 	  "[^:]")
@@ -2750,12 +2774,12 @@ the last)."
    "^\\("				; 1 = all
        "\\([ \t]*package"		; 2 = package-group
           "\\("				; 3 = package-name-group
-	    "\\([ \t\n]+\\|#[^\n]*\n\\)+" ; 4 = pre-package-name
+	    cperl-white-and-comment-rex ; 4 = pre-package-name
 	       "\\([a-zA-Z_0-9:']+\\)\\)?\\)" ; 5 = package-name
        "\\|"
           "[ \t]*sub"
 	  (cperl-after-sub-regexp 'named nil) ; 8=name 11=proto 14=attr-start
-	  "\\([ \t\n]+\\|#[^\n]*\n\\)*"	; 15=pre-block
+	  cperl-maybe-white-and-comment-rex	; 15=pre-block
    "\\|"
      "=head\\([1-4]\\)[ \t]+"		; 16=level
      "\\([^\n]+\\)$"			; 17=text
@@ -2800,6 +2824,8 @@ the last)."
   (modify-syntax-entry ?| "." cperl-mode-syntax-table)
   (setq cperl-string-syntax-table (copy-syntax-table cperl-mode-syntax-table))
   (modify-syntax-entry ?$ "." cperl-string-syntax-table)
+  (modify-syntax-entry ?\{ "." cperl-string-syntax-table)
+  (modify-syntax-entry ?\} "." cperl-string-syntax-table)
   (modify-syntax-entry ?# "." cperl-string-syntax-table)) ; (?# comment )
 
 
@@ -3071,11 +3097,11 @@ or as help on variables `cperl-tips', `cperl-problems',
   (make-local-variable 'defun-prompt-regexp)
 ;;;       "[ \t]*sub"
 ;;;	  (cperl-after-sub-regexp 'named nil) ; 8=name 11=proto 14=attr-start
-;;;	  "\\([ \t\n]+\\|#[^\n]*\n\\)*"	; 15=pre-block
+;;;	  cperl-maybe-white-and-comment-rex	; 15=pre-block
   (setq defun-prompt-regexp
 	(concat "[ \t]*sub"
 		(cperl-after-sub-regexp 'named 'attr-groups)
-		"\\([ \t\n]+\\|#[^\n]*\n\\)*"))
+		cperl-maybe-white-and-comment-rex))
   (make-local-variable 'comment-indent-function)
   (setq comment-indent-function 'cperl-comment-indent)
   (and (boundp 'fill-paragraph-function)
@@ -4142,7 +4168,7 @@ and closing parentheses and brackets."
 		      (goto-char start)
 		      (- (current-indentation)
 			 (if (nth 2 s-s) cperl-indent-level 0)))
-		    (if (= char-after ?{) cperl-continued-brace-offset 0)
+		    (if (eq char-after ?{) cperl-continued-brace-offset 0)
 		    (progn
 		      (cperl-backward-to-noncomment (or old-indent (point-min)))
 		      ;; Look at previous line that's at column 0
@@ -4866,7 +4892,7 @@ Should be called with the point before leading colon of an attribute."
 	(while (looking-at
 		(concat
 		 "\\("			; 1=optional? colon
-		   ":\\([ \t\n]+\\|#[^\n]*\n\\)*" ; 2=whitespace
+		   ":" cperl-maybe-white-and-comment-rex ; 2=whitespace/comment?
 		 "\\)"
 		 (if after-first "?" "")
 		 ;; No space between name and paren allowed...
@@ -5004,9 +5030,10 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		;; 1+6+2+1+1=11 extra () before this
 		"\\<sub\\>"		;  sub with proto/attr
 		"\\("
-		   "\\([ \t\n]+\\|#[^\n]*\n\\)+"
+		   cperl-white-and-comment-rex
 		   "\\(::[a-zA-Z_:'0-9]*\\|[a-zA-Z_'][a-zA-Z_:'0-9]*\\)\\)?" ; name
-		"\\(\\([ \t\n]+\\|#[^\n]*\n\\)*"
+		"\\("
+		   cperl-maybe-white-and-comment-rex
 		   "\\(([^()]*)\\|:[^:]\\)\\)" ; prototype or attribute start
 		"\\|"
 		;; 1+6+2+1+1+6=17 extra () before this:
@@ -5349,8 +5376,8 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				(or (memq (preceding-char)
 					  (append (if (memq c '(?\? ?\<))
 						      ;; $a++ ? 1 : 2
-						      "~{(=|&*!,;:"
-						    "~{(=|&+-*!,;:") nil))
+						      "~{(=|&*!,;:["
+						    "~{(=|&+-*!,;:[") nil))
 				    (and (eq (preceding-char) ?\})
 					 (cperl-after-block-p (point-min)))
 				    (and (eq (char-syntax (preceding-char)) ?w)
@@ -5565,9 +5592,9 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				     (if (eq (char-after b) ?\) ) ""
 				       (concat
 					"\\|"
-				        (if (eq (char-after b) ?? )
-					    "\\((\\\\\\?{\\)"
-					  "\\((\\?{\\)")) ; 5 = (?{
+				        (if (eq (char-after b) ?? ) ; 5 = (?{
+					    "\\((\\\\\\?\\(\\\\\\?\\)?{\\)"
+					  "\\((\\?\\(\\?\\)?{\\)")) ; 5 = opt ?
 					))
 				    (1- e) 'to-end))
 			    (goto-char (match-beginning 0))
@@ -5741,9 +5768,9 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 	       ((match-beginning 17)	; sub with prototype or attribute
 		;; 1+6+2+1+1=11 extra () before this (sub with proto/attr):
 		;;"\\<sub\\>\\("			;12
-		;;   "\\([ \t\n]+\\|#[^\n]*\n\\)+"	;13
+		;;   cperl-white-and-comment-rex	;13
 		;;   "\\([a-zA-Z_:'0-9]+\\)\\)?" ; name	;14
-		;;"\\(\\([ \t\n]+\\|#[^\n]*\n\\)*"	;15,16
+		;;"\\(" cperl-maybe-white-and-comment-rex	;15,16
 		;;   "\\(([^()]*)\\|:[^:]\\)\\)" ; 17:proto or attribute start
 		(setq b1 (match-beginning 14) e1 (match-end 14))
 		(if (memq (char-after (1- b))
@@ -6760,12 +6787,12 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    ;; We do not try to highlight in the case of attributes:
 	    ;; it is already done by `cperl-find-pods-heres'
 	    (list (concat "\\<sub"
-			  "\\([ \t\n]+\\|#[^\n]*\n\\)+" ; whitespace/comments
+			  cperl-white-and-comment-rex ; whitespace/comments
 			  "\\([^ \n\t{;()]+\\)" ; 2=name (assume non-anonymous)
 			  "\\("
-			    "\\([ \t\n]+\\|#[^\n]*\n\\)*" ;whitespace/comments?
+			    cperl-maybe-white-and-comment-rex ;whitespace/comments?
 			    "([^()]*)\\)?" ; prototype
-			  "\\([ \t\n]+\\|#[^\n]*\n\\)*" ; whitespace/comments?
+			  cperl-maybe-white-and-comment-rex ; whitespace/comments?
 			  "[{;]")
 		  2 (if cperl-font-lock-multiline
 			'(if (eq (char-after (cperl-1- (match-end 0))) ?\{ )
@@ -6817,13 +6844,21 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			nil t)))	; local variables, multiple
 		  (font-lock-anchored
 		   ;; 1=my_etc, 2=white? 3=(+white? 4=white? 5=var
-		   (` ("\\<\\(my\\|local\\|our\\)\\([ \t\n]+\\|#[^\n]*\n\\)*\\((\\([ \t\n]+\\|#[^\n]*\n\\)*\\)?\\([$@%*]\\([a-zA-Z0-9_:]+\\|[^a-zA-Z0-9_]\\)\\)"
+		   (` ((, (concat "\\<\\(my\\|local\\|our\\)"
+				  cperl-maybe-white-and-comment-rex
+				  "\\(("
+				     cperl-maybe-white-and-comment-rex
+				  "\\)?\\([$@%*]\\([a-zA-Z0-9_:]+\\|[^a-zA-Z0-9_]\\)\\)"))
 		       (5 (, (if cperl-font-lock-multiline
 				 'font-lock-variable-name-face
 			       '(progn  (setq cperl-font-lock-multiline-start
 					      (match-beginning 0))
 					'font-lock-variable-name-face))))
-		       ("\\=\\([ \t\n]+\\|#[^\n]*\n\\)*,\\([ \t\n]+\\|#[^\n]*\n\\)*\\([$@%*]\\([a-zA-Z0-9_:]+\\|[^a-zA-Z0-9_]\\)\\)"
+		       ((, (concat "\\="
+				   cperl-maybe-white-and-comment-rex
+				   ","
+				   cperl-maybe-white-and-comment-rex
+				   "\\([$@%*]\\([a-zA-Z0-9_:]+\\|[^a-zA-Z0-9_]\\)\\)"))
 			;; Bug in font-lock: limit is used not only to limit 
 			;; searches, but to set the "extend window for
 			;; facification" property.  Thus we need to minimize.
@@ -7390,7 +7425,7 @@ Customized by setting variables `cperl-shrink-wrap-info-frame',
 	  iniwin (selected-window)
 	  fr1 (window-frame iniwin))
     (set-buffer buf)
-    (beginning-of-buffer)
+    (goto-char (point-min))
     (or isvar
 	(progn (re-search-forward "^-X[ \t\n]")
 	       (forward-line -1)))
@@ -8184,7 +8219,7 @@ Currently it is tuned to C and Perl syntax."
   (interactive)
   (let (found-bad (p (point)))
     (setq last-nonmenu-event 13)	; To disable popup
-    (beginning-of-buffer)
+    (goto-char (point-min))
     (map-y-or-n-p "Insert space here? "
 		  (lambda (arg) (insert " "))
 		  'cperl-next-bad-style
@@ -9614,7 +9649,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 5.13 $"))
+  (let ((v  "$Revision: 5.14 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
