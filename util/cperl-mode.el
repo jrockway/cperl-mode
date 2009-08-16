@@ -5309,7 +5309,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\\\\\(['`\"($]\\)"	; BACKWACKED something-hairy
 		;; 1+6+2+1+1+6+1+1+1+1=21 extra () before this: ; perl6
 		"\\|"
-		"\\<\\(\\(rx\\|[ms]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)\\>:?")            ; perl6: rx
+		"\\<\\(\\(rx\\|[ms]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\(ly\\)?\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)\\>:?")            ; perl6: rx
 		;; 1+6+2+1+1+6+1+1+1+1+7=28 extra () before this: ; perl6
 	     ""))))
     (unwind-protect
@@ -5861,7 +5861,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			    (and cperl-fontify-m-as-s
 				 (or
 				  ;; (string-match "^\\(m\\|qr\\)$" argument)    ; perl6
-				  (string-match "^\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument)           ; perl6: rx
+				  (string-match "^\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\(ly\\)?\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument)           ; perl6: rx
 				  (and (eq 0 (length argument))
 				       (not (eq ?\< (char-after b)))))))
 			(progn
@@ -6493,7 +6493,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 						(and cperl-fontify-m-as-s
 							 (or
 							  ;; (string-match "^\\(m\\|qr\\)$" argument)    ; perl6
-							  (string-match "^\\(\\(qr\\|rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument) ; perl6: rx
+							  (string-match "^\\(\\(qr\\|rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\(ly\\)?\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\)$" argument) ; perl6: rx
 							  (and (eq 0 (length argument))
 								   (not (eq ?\< (char-after b)))))))
 					(progn
@@ -6929,7 +6929,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
                 (backward-sexp)
                 ;; sub {BLK}, print {BLK} $data, but NOT `bless', `return', `tr'
                 (or (and (looking-at "[a-zA-Z0-9_:]+[ \t\n\f]*[{#]") ; Method call syntax
-                         (not (looking-at "\\(bless\\|return\\|\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\):?\\)")) ;; perl6 23.06.2006
+                         (not (looking-at "\\(bless\\|return\\|\\(\\(rx\\|[msy]\\|tr\\)\\s *\\(:\\([igcpw]\\|ignorecase\\|global\\(ly\\)?\\|continue\\|pos\\|once\\|words\\|bytes\\|codes\\|graphs\\|langs\\|\\|[0-9]+\\(st\\|nd\\|rd\\|th\\|x\\)\\|ov\\|overlap\\|ex\\|exhaustive\\|rw\\|P5\\|perl5\\|Perl5\\(<[a-zA-Z]+>\\)?\\|nth\\(([0-9]+)\\)?\\|x\\(([0-9]+)\\)?\\)\\s *\\)*\\):?\\)")) ;; perl6 23.06.2006
                          (not (looking-at "\\$[a-zA-Z0-9_]+"))) ; perl6: todo: why? (topics before blockstart?); even better [$@%]?
                     ;; sub bless::foo {}
                     (progn
