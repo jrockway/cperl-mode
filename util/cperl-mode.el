@@ -3323,13 +3323,16 @@ or as help on variables `cperl-tips', `cperl-problems',
   (set 'vc-header-alist (or cperl-vc-header-alist ; Avoid warning
 			    (` ((SCCS (, (car cperl-vc-sccs-header)))
 				     (RCS (, (car cperl-vc-rcs-header)))))))
-  (cond ((boundp 'compilation-error-regexp-alist-alist);; xemacs 20.x
+  (cond ((boundp 'compilation-error-regexp-alist-alist);; xemacs 20.x, emacs22
 	 (make-local-variable 'compilation-error-regexp-alist-alist)
 	 (set 'compilation-error-regexp-alist-alist
 	      (cons (cons 'cperl cperl-compilation-error-regexp-alist)
 		    (symbol-value 'compilation-error-regexp-alist-alist)))
-	 (let ((f 'compilation-build-compilation-error-regexp-alist))
-	   (funcall f)))
+         (if (fboundp 'compilation-build-compilation-error-regexp-alist)
+             (let ((f 'compilation-build-compilation-error-regexp-alist))
+               (funcall f))         ; xemacs 20.x
+           (make-local-variable 'compilation-error-regexp-alist) ; emacs22
+           (push 'cperl compilation-error-regexp-alist)))
 	((boundp 'compilation-error-regexp-alist);; xmeacs 19.x
 	 (make-local-variable 'compilation-error-regexp-alist)
 	 (set 'compilation-error-regexp-alist
@@ -10980,7 +10983,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "Revision: 5.20-Pugs "))
+  (let ((v  "Revision: 5.20.1-Pugs "))
     (string-match ":\\s *\\([-0-9a-z.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
