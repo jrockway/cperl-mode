@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.12 2005/10/31 23:21:44 vera Exp vera $
+;; $Id: cperl-mode.el,v 5.13 2005/11/01 03:17:09 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1359,6 +1359,14 @@
 
 ;;; New menu entries (Perl/Tools): selection of current POD or HERE-DOC section
 ;;;				(Debugging CPerl:) backtrace on fontification
+
+;;; After 5.12:
+;;; `cperl-cached-syntax-table': use `car-safe'
+;;; `cperl-forward-re':		Remove spurious argument SET-ST
+;;;				Add documentation
+;;; `cperl-forward-group-in-re': New function
+;;; `cperl-find-pods-heres':	Find and highlight (?{}) blocks in RExen.
+;;;	(XXXX Temporary (?) hack is to syntax-mark them as comment)
 
 ;;; Code:
 
@@ -4639,7 +4647,7 @@ Returns true if comment is found.  In POD will not move the point."
   "Get a syntax table cached in ST, or create and cache into ST a syntax table.
 All the entries of the syntax table are \".\", except for a backslash, which
 is quoting."
-  (if (car st)
+  (if (car-safe st)
       (car st)
     (setcar st (make-syntax-table))
     (setq st (car st))
@@ -4650,28 +4658,38 @@ is quoting."
     (modify-syntax-entry ?\\ "\\" st)
     st))
 
-(defun cperl-forward-re (lim end is-2arg set-st st-l err-l argument
+(defun cperl-forward-re (lim end is-2arg st-l err-l argument
 			     &optional ostart oend)
-  ;; Works *before* syntax recognition is done
-  ;; May modify syntax-type text property if the situation is too hard
-  (let (b starter ender st i i2 go-forward reset-st)
+"Find the end of a regular expression or a stringish construct (q[] etc).
+The point should be before the starting delimiter.
+
+Goes to LIM if none is found.  If IS-2ARG is non-nil, assumes that it
+is s/// or tr/// like expression.  If END is nil, generates an error
+message if needed.  If SET-ST is non-nil, will use (or generate) a
+cached syntax table in ST-L.  If ERR-L is non-nil, will store the
+error message in its CAR (unless it already contains some error
+message).  ARGUMENT should be the name of the construct (used in error
+messages).  OSTART, OEND may be set in recursive calls when processing
+the second argument of 2ARG construct.
+
+Works *before* syntax recognition is done.  In IS-2ARG situation may
+modify syntax-type text property if the situation is too hard."
+  (let (b starter ender st i i2 go-forward reset-st set-st)
     (skip-chars-forward " \t")
     ;; ender means matching-char matcher.
     (setq b (point)
 	  starter (if (eobp) 0 (char-after b))
 	  ender (cdr (assoc starter cperl-starters)))
     ;; What if starter == ?\\  ????
-    (if set-st
-	(setq st (cperl-cached-syntax-table st-l)))
+    (setq st (cperl-cached-syntax-table st-l))
     (setq set-st t)
     ;; Whether we have an intermediate point
     (setq i nil)
     ;; Prepare the syntax table:
-    (and set-st
-	 (if (not ender)		; m/blah/, s/x//, s/x/y/
-	     (modify-syntax-entry starter "$" st)
-	   (modify-syntax-entry starter (concat "(" (list ender)) st)
-	   (modify-syntax-entry ender  (concat ")" (list starter)) st)))
+    (if (not ender)		; m/blah/, s/x//, s/x/y/
+	(modify-syntax-entry starter "$" st)
+      (modify-syntax-entry starter (concat "(" (list ender)) st)
+      (modify-syntax-entry ender  (concat ")" (list starter)) st))
     (condition-case bb
 	(progn
 	  ;; We use `$' syntax class to find matching stuff, but $$
@@ -4718,7 +4736,7 @@ is quoting."
 		(modify-syntax-entry starter (if (eq starter ?\\) "\\" ".") st)
 		(if ender (modify-syntax-entry ender "." st))
 		(setq set-st nil)
-		(setq ender (cperl-forward-re lim end nil t st-l err-l
+		(setq ender (cperl-forward-re lim end nil st-l err-l
 					      argument starter ender)
 		      ender (nth 2 ender)))))
       (error (goto-char lim)
@@ -4742,6 +4760,33 @@ is quoting."
     ;; starter: the starting delimiter of the first arg
     ;; go-forward: has 2 args, and the second part is empty
     (list i i2 ender starter go-forward)))
+
+(defun cperl-forward-group-in-re (&optional st-l)
+  "Find the end of a group in a REx.
+Return the error message (if any).  Does not work if delimiter is `)'.
+Works before syntax recognition is done."
+  ;; Works *before* syntax recognition is done
+  (or st-l (setq st-l (list nil)))	; Avoid overwriting '()
+  (let (st b reset-st)
+    (condition-case b
+	(progn
+	  (setq st (cperl-cached-syntax-table st-l))
+	  (modify-syntax-entry ?\( "()" st)
+	  (modify-syntax-entry ?\) ")(" st)
+	  (setq reset-st (syntax-table))
+	  (set-syntax-table st)
+	  (forward-sexp 1))
+      (error (message
+	      "cperl-forward-group-in-re: error %s" b)))
+    ;; now restore the initial state
+    (if st
+	(progn
+	  (modify-syntax-entry ?\( "." st)
+	  (modify-syntax-entry ?\) "." st)))
+    (if reset-st
+	(set-syntax-table reset-st))
+    b))
+
 
 (defvar font-lock-string-face)
 ;;(defvar font-lock-reference-face)
@@ -5401,7 +5446,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			;; some hook of fontification, and max is random
 			i (cperl-forward-re stop-point end
 					    i2
-					    t st-l err-l argument)
+					    st-l err-l argument)
 			;; If `go', then it is considered as 1-arg, `b1' is nil
 			;; as in s/foo//x; the point is before final "slash"
 			b1 (nth 1 i)	; start of the second part
@@ -5516,7 +5561,14 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				        "\\(\\[\\)" ; 3=[
 				     "\\|"
 				        "\\(]\\)" ; 4=]
-				     )
+				     ;; XXXX Will not be able to use it in s)))
+				     (if (eq (char-after b) ?\) ) ""
+				       (concat
+					"\\|"
+				        (if (eq (char-after b) ?? )
+					    "\\((\\\\\\?{\\)"
+					  "\\((\\?{\\)")) ; 5 = (?{
+					))
 				    (1- e) 'to-end))
 			    (goto-char (match-beginning 0))
 			    (setq REx-subgr-start (point)
@@ -5630,7 +5682,35 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				   'face font-lock-type-face)
 				  (setq tag (cdr tag)))
 				(setq was-subgr nil)) ; did facing already
+			       ((match-beginning 5) ; (?{})
+				(setq was-subgr (point)
+				      tag (match-end 0))
+				(if (or
+				     (setq qtag
+					   (cperl-forward-group-in-re st-l))
+				     (and (>= (point) e)
+					  (setq qtag "no matching `)' found"))
+				     (and
+				      (not (eq (char-after (- (point) 2))
+					       ?\} ))
+				      (setq qtag "Can't find })")))
+				    (progn
+				      (goto-char (1- e))
+				      (message qtag))
+				  (cperl-postpone-fontification
+				   (1- tag) (1- (point))
+				   'face font-lock-variable-name-face)
+				  (if cperl-use-syntax-table-text-property
+				      (progn
+					(put-text-property
+					 (1- (point)) (point)
+					 'syntax-table cperl-st-cfence)
+					(put-text-property
+					 was-subgr (1+ was-subgr)
+					 'syntax-table cperl-st-cfence))))
+				(setq was-subgr nil))
 			       (t	; (?#)-comment
+				;; Inside "(" and "\" arn't special in any way
 				;; Works also if the outside delimiters are ().
 				(or (search-forward ")" (1- e) 'toend)
 				    (message
@@ -9534,7 +9614,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 5.12 $"))
+  (let ((v  "$Revision: 5.13 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
