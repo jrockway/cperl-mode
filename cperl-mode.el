@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.15 2006/01/28 20:01:45 vera Exp vera $
+;; $Id: cperl-mode.el,v 5.16 2006/02/21 11:18:21 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1386,10 +1386,20 @@
 ;;;				Likewise for 1 << identifier
 
 ;;; After 5.14:
-;;; `cperl-find-pods-heres':	Error-less condition-case could fail
-;;;				Different logic for $foo .= <<EOF etc
+;;; `cperl-find-pods-heres':	Different logic for $foo .= <<EOF etc
+;;;				Error-less condition-case could fail
 ;;; `cperl-font-lock-fontify-region-function': Likewise
 ;;; `cperl-init-faces':		Likewise
+
+;;; After 5.15:
+;;; `cperl-find-pods-heres':	Support property REx-part2
+;;; `cperl-calculate-indent':	Likewise
+;;;				Don't special-case REx with non-empty 1st line
+;;; `cperl-find-pods-heres':	In RExen, highlight non-literal backslashes
+;;;				Invert highlighting of charclasses: 
+;;;					now the envelop is highlighted
+;;;				Highlight many others 0-length builtins
+;;; `cperl-praise':		Mention indenting and highlight in RExen.
 
 ;;; Code:
 
@@ -2256,6 +2266,9 @@ voice);
         q) Can ispell POD sections and HERE-DOCs.
 	r) Understands comments and character classes inside regular
 	   expressions; can find matching () and [] in a regular expression.
+	s) Allows indentation of //x-style regular expressions;
+	t) Highlights different symbols in regular expressions according
+	   to their function; much less problems with backslashitis.
 
 5) The indentation engine was very smart, but most of tricks may be
 not needed anymore with the support for `syntax-table' property.  Has
@@ -2647,6 +2660,8 @@ versions of Emacs."
 	  ["CPerl pretty print (exprmntl)" cperl-ps-print
 	   (fboundp 'ps-extend-face-list)]
 	  "----"
+	  ["Syntaxify region" cperl-find-pods-heres-region
+	   (cperl-use-region-p)]
 	  ["Profile syntaxification" cperl-time-fontification t]
 	  ["Debug errors in delayed fontification" cperl-emulate-lazy-lock t]
 	  ["Debug unwind for syntactic scan" cperl-toggle-set-debug-unwind t]
@@ -4121,12 +4136,18 @@ and closing parentheses and brackets."
 			(cperl-1+ char-after-pos) 'indentable)
 		       p (1+ (cperl-beginning-of-property
 			      (point) 'indentable))
-		       is-block 
+		       is-block		; misused for: preceeding line in REx
 		       (save-excursion	; Find preceeding line
 			 (cperl-backward-to-noncomment p)
 			 (beginning-of-line)
 			 (if (<= (point) p)
-			     nil
+			     (progn	; get indent from the first line
+			       (goto-char p)
+			       (skip-chars-forward " \t")
+			       (if (memq (char-after (point))
+					 (append "#\n" nil))
+				   nil	; Can't use intentation of this line...
+				 (point)))
 			   (skip-chars-forward " \t")
 			   (point)))
 		       prop (parse-partial-sexp p char-after-pos))
@@ -4154,14 +4175,15 @@ and closing parentheses and brackets."
 			     0)
 			   (current-column)))
 		       ;; Now we have no preceeding line...
-		       ((progn (goto-char p)
-			       (looking-at "[ \t]*\\(#\\|$\\)"))
+		       (t
+			(goto-char p)
 			(+ (or cperl-regexp-indent-step cperl-indent-level)
 			   -1
-			   (current-column)))
-		       (t		; code on the start line
-			(skip-chars-forward " \t")
-			(current-column))))
+			   (current-column)))))
+		((get-text-property char-after-pos 'REx-part2)
+		 (condition-case nil	; Use indentation of the 1st part
+		     (forward-sexp -1))
+		 (current-column))
 		((or (nth 3 state) (nth 4 state))
 		 ;; return nil or t if should not change this line
 		 (nth 4 state))
@@ -4956,6 +4978,14 @@ Should be called with the point before leading colon of an attribute."
     (if reset-st
 	(set-syntax-table reset-st))))
 
+(defsubst cperl-look-at-leading-count (is-x-REx e)
+  (if (re-search-forward (concat "\\=" (if is-x-REx "[ \t\n]*" "") "[{?+*]")
+			 (1- e) t)	; return nil on failure, no moving
+      (if (eq ?\{ (preceding-char)) nil
+	(cperl-postpone-fontification
+	 (1- (point)) (point)
+	 'face font-lock-function-name-face))))
+
 ;;; Debugging this may require (setq max-specpdl-size 2000)...
 (defun cperl-find-pods-heres (&optional min max non-inter end ignore-max end-of-here-doc)
   "Scans the buffer for hard-to-parse Perl constructions.
@@ -4969,7 +4999,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
   (or max (setq max (point-max)))
   (let* ((cperl-pod-here-fontify (eval cperl-pod-here-fontify)) go tmpend
 	 face head-face here-face b e bb tag qtag b1 e1 argument i c tail tb
-	 is-REx is-x-REx REx-subgr-start REx-subgr-end was-subgr i2
+	 is-REx is-x-REx REx-subgr-start REx-subgr-end was-subgr i2 hairy-RE
 	 (case-fold-search nil) (inhibit-read-only t) (buffer-undo-list t)
 	 (modified (buffer-modified-p)) overshoot
 	 (after-change-functions nil)
@@ -5078,6 +5108,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 						  front-sticky t
 						  here-doc-group t
 						  first-format-line t
+						  REx-part2 t
 						  indentable t))
 	    ;; Need to remove face as well...
 	    (goto-char min)
@@ -5156,6 +5187,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 					      rear-nonsticky t
 					      front-sticky t
 					      first-format-line t
+					      REx-part2 t
 					      indentable t))
 			 (setq tmpend tb)))
 		  (put-text-property b e 'in-pod t)
@@ -5493,7 +5525,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		  ;; qtag means two-arg matcher, may be reset to
 		  ;;   2 or 3 later if some special quoting is needed.
 		  ;; e1 means matching-char matcher.
-		  (setq b (point)
+		  (setq b (point)	; before the first delimiter
 			;; has 2 args
 			i2 (string-match "^\\([sy]\\|tr\\)$" argument)
 			;; We do not search to max, since we may be called from
@@ -5515,6 +5547,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			e (if i i e1)	; end of the first part
 			qtag nil	; need to preserve backslashitis
 			is-x-REx nil)	; REx has //x modifier
+		  ;; If s{} (), then b/b1 are at "{", "(", e1/i after ")", "}"
 		  ;; Commenting \\ is dangerous, what about ( ?
 		  (and i tail
 		       (eq (char-after i) ?\\)
@@ -5599,36 +5632,67 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			;; Process RExen: embedded comments, charclasses and ]
 			(save-excursion
 			  (goto-char (1+ b))
+			  ;; First 
+			  (cperl-look-at-leading-count is-x-REx e)
+			  (setq hairy-RE
+				(concat
+				 (if is-x-REx
+				     (if (eq (char-after b) ?\#)
+					 "\\((\\?\\\\#\\)\\|\\(\\\\#\\)"
+				       "\\((\\?#\\)\\|\\(#\\)")
+				   ;; keep the same count: add a fake group
+				   (if (eq (char-after b) ?\#)
+				       "\\((\\?\\\\#\\)\\(\\)"
+				     "\\((\\?#\\)\\(\\)"))
+				 "\\|"
+				    "\\(\\[\\)" ; 3=[
+				 "\\|"
+				    "\\(]\\)" ; 4=]
+				 "\\|"	; 5=builtin 0-length, 6
+				    ;; XXXX: what if u is delim?
+				    "\\("
+				       "[)^$|]"
+				    "\\|"
+				       "[*?+]" ; Do not need \?? !
+				    "\\|"
+				       "{[0-9]+}"
+				    "\\|"
+				       "{[0-9]+,[0-9]*}"
+				    "\\|"
+				       "\\\\[luLUEQbBAzZG]"
+				    "\\|"
+				       "("
+				       "\\("
+				          "\\?[:=!>]"
+				       "\\|"
+				          "\\?[-imsx]+[:)]" ; (?i) (?-s:.)
+				       "\\|"
+				          "\\?([0-9]+)"	; (?(1)foo|bar)
+				       "\\|"
+					  "\\?<[=!]"
+				       "\\|"
+					  "\\?"	; (?(?=foo)bar|baz)
+				       "\\)?"
+				    "\\)"
+				 ;; XXXX Need {5,6}?
+				 "\\|"
+				    "\\\\\\(.\\)" ; 7=\SYMBOL
+				 ;; XXXX Will not be able to use it in s)))
+				 (if (eq (char-after b) ?\) ) ""
+				   (concat
+				    "\\|"
+				    (if (eq (char-after b) ?? ) ; 8 = (?{
+					"\\((\\\\\\?\\(\\\\\\?\\)?{\\)"
+				      "\\((\\?\\(\\?\\)?{\\)"))))) ; 8 = opt ?
 			  (while
-			      (and (< (point) e)
-				   (re-search-forward
-				    (concat
-				     (if is-x-REx
-					 (if (eq (char-after b) ?\#)
-					     "\\((\\?\\\\#\\)\\|\\(\\\\#\\)"
-					   "\\((\\?#\\)\\|\\(#\\)")
-				       ;; keep the same count: add a fake group
-				       (if (eq (char-after b) ?\#)
-					   "\\((\\?\\\\#\\)\\(\\)"
-					 "\\((\\?#\\)\\(\\)"))
-				     "\\|"
-				        "\\(\\[\\)" ; 3=[
-				     "\\|"
-				        "\\(]\\)" ; 4=]
-				     ;; XXXX Will not be able to use it in s)))
-				     (if (eq (char-after b) ?\) ) ""
-				       (concat
-					"\\|"
-				        (if (eq (char-after b) ?? ) ; 5 = (?{
-					    "\\((\\\\\\?\\(\\\\\\?\\)?{\\)"
-					  "\\((\\?\\(\\?\\)?{\\)")) ; 5 = opt ?
-					))
-				    (1- e) 'to-end))
+			      (and (< (point) (1- e))
+				   (re-search-forward hairy-RE (1- e) 'to-end))
 			    (goto-char (match-beginning 0))
 			    (setq REx-subgr-start (point)
 				  was-subgr t)
 			    (if (save-excursion
 				  (and
+				   nil	; Not needed now, when we skip \SYMBOL
 				   (/= (1+ b) (point)) ; \ may be delim
 				   (eq (preceding-char) ?\\)
 				   (= (% (skip-chars-backward "\\\\") 2)
@@ -5640,21 +5704,47 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				(progn (setq was-subgr nil)
 				       (forward-char 1))
 			      (cond
-			       ((match-beginning 2) ; #-comment
-				(beginning-of-line 2)
-				(if (> (point) e)
-				    (goto-char (1- e))))
-			       ((match-beginning 4) ; character "]"
+			       ((match-beginning 5) ; 0-length builtins
 				(setq was-subgr nil) ; We do stuff here
-				(goto-char (match-end 0))
-				(if cperl-use-syntax-table-text-property
-				    (put-text-property
-				     (1- (point)) (point)
-				     'syntax-table cperl-st-punct))
+				(goto-char (match-end 5))
+				(if (>= (point) e)
+				    (goto-char (1- e)))
 				(cperl-postpone-fontification
-				 (1- (point)) (point)
-				 'face font-lock-function-name-face))
+				 (match-beginning 5) (point)
+				 'face font-lock-variable-name-face)
+				(if (and (memq (string-to-char (match-string 5))
+					       (append "(|" nil))
+					 (not (string-match "(\?[-imsx]+)"
+							    (match-string 5))))
+				    (cperl-look-at-leading-count is-x-REx e)))
+			       ((match-beginning 7) ; \SYMBOL
+				(forward-char 2)
+				(if (>= (point) e)
+				    (goto-char (1- e))
+				  ;; 0-len special-alnums in other branch =>
+				  ;; Generic:  \non-alnum (1), \alnum NO
+				  ;; Is-delim: \non-alnum (1/spec-2) alnum-1 (=what hai)
+				  ;; How many chars to not highlight
+				  (setq was-subgr (if (eq (char-after b)
+							  (string-to-char
+							   (match-string 7)))
+						      (if (string-match
+							   "[][)^$|*?+]"
+							   (match-string 7))
+							  0
+							1)
+						    (if (string-match
+							 "[a-zA-Z0-9]"
+							 (match-string 7))
+							nil
+						      1)))
+				  (if was-subgr
+				      (cperl-postpone-fontification
+				       (- (point) 2) (- (point) was-subgr)
+				       'face font-lock-variable-name-face)))
+				(setq was-subgr nil)) ; We do stuff here
 			       ((match-beginning 3) ; [charclass]
+				;; Mismatch for /$patterns->[1]/
 				(forward-char 1)
 				(setq qtag 0) ; leaders
 				(if (eq (char-after b) ?^ )
@@ -5725,18 +5815,36 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				     (1+ REx-subgr-start) (1- (point))
 				     'syntax-table cperl-st-punct))
 				(cperl-postpone-fontification
-				 qtag
+				 REx-subgr-start qtag
+				 'face font-lock-variable-name-face)
+				(cperl-postpone-fontification
 				 (if (eq (char-after b) ?\] )
 				     (- (point) 2)
 				   (1- (point)))
-				 'face font-lock-variable-name-face)
+				 (point) 'face font-lock-variable-name-face)
 				(while tag
 				  (cperl-postpone-fontification
 				   (car (car tag)) (cdr (car tag))
 				   'face font-lock-type-face)
 				  (setq tag (cdr tag)))
 				(setq was-subgr nil)) ; did facing already
-			       ((match-beginning 5) ; (?{})
+			       ;; Now rare stuff:
+			       ((and (match-beginning 2) ; #-comment
+				     (/= (match-beginning 2) (match-end 2)))
+				(beginning-of-line 2)
+				(if (> (point) e)
+				    (goto-char (1- e))))
+			       ((match-beginning 4) ; character "]"
+				(setq was-subgr nil) ; We do stuff here
+				(goto-char (match-end 0))
+				(if cperl-use-syntax-table-text-property
+				    (put-text-property
+				     (1- (point)) (point)
+				     'syntax-table cperl-st-punct))
+				(cperl-postpone-fontification
+				 (1- (point)) (point)
+				 'face font-lock-function-name-face))
+			       ((match-beginning 8) ; (?{})
 				(setq was-subgr (point)
 				      tag (match-end 0))
 				(if (or
@@ -5766,7 +5874,12 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			       (t	; (?#)-comment
 				;; Inside "(" and "\" arn't special in any way
 				;; Works also if the outside delimiters are ().
-				(or (search-forward ")" (1- e) 'toend)
+				(or ;;(if (eq (char-after b) ?\) )
+					;;(re-search-forward
+					;; "[^\\\\]\\(\\\\\\\\\\)*\\\\)"
+					;; (1- e) 'toend)
+				      (search-forward ")" (1- e) 'toend)
+				      ;;)
 				    (message
 				     "Couldn't find end of (?#...)-comment in a REx, pos=%s"
 				     REx-subgr-start)))))
@@ -5788,8 +5901,11 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			(cperl-postpone-fontification
 			 (1- e1) e1 'face font-lock-constant-face)
 			(if (assoc (char-after b) cperl-starters)
-			    (cperl-postpone-fontification
-			     b1 (1+ b1) 'face font-lock-constant-face))))
+			    (progn
+			      (cperl-postpone-fontification
+			       b1 (1+ b1) 'face font-lock-constant-face)
+			      (put-text-property b1 (1+ b1)
+					   'REx-part2 t)))))
 		  (if (> (point) max)
 		      (setq tmpend tb))))
 	       ((match-beginning 17)	; sub with prototype or attribute
@@ -5860,6 +5976,10 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 	   (set-buffer-modified-p nil))
       (set-syntax-table cperl-mode-syntax-table))
     (list (car err-l) overshoot)))
+
+(defun cperl-find-pods-heres-region (min max)
+  (interactive "r")
+  (cperl-find-pods-heres min max))
 
 (defun cperl-backward-to-noncomment (lim)
   ;; Stops at lim or after non-whitespace that is not in comment
@@ -9678,7 +9798,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 5.15 $"))
+  (let ((v  "$Revision: 5.16 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
