@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.14 2005/11/09 07:15:39 vera Exp vera $
+;; $Id: cperl-mode.el,v 5.15 2006/01/28 20:01:45 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1381,8 +1381,17 @@
 ;;;				XXXX Not very efficient, but hard to make
 ;;;				better while keeping 1 group.
 
-;;; Code:
+;;; After 5.13:
+;;; `cperl-find-pods-heres':	$foo << identifier() is not a HERE-DOC
+;;;				Likewise for 1 << identifier
 
+;;; After 5.14:
+;;; `cperl-find-pods-heres':	Error-less condition-case could fail
+;;;				Different logic for $foo .= <<EOF etc
+;;; `cperl-font-lock-fontify-region-function': Likewise
+;;; `cperl-init-faces':		Likewise
+
+;;; Code:
 
 (if (fboundp 'eval-when-compile)
     (eval-when-compile
@@ -5209,11 +5218,29 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 	       ((match-beginning 2)	; 1 + 1
 		(setq b (point)
 		      tb (match-beginning 0)
-		      c (and
-			   (match-beginning 5)
-			   (not (match-beginning 6)) ; Empty
-			   (looking-at
-			    "[ \t]*[=0-9$@%&(]")))
+		      c (and		; not HERE-DOC
+			 (match-beginning 5)
+			 (save-match-data
+			   (or (looking-at "[ \t]*(") ; << function_call()
+			       (save-excursion ; 1 << func_name, or $foo << 10
+				 (condition-case nil
+				     (progn
+				       (goto-char tb)
+	       ;;; XXX What to do: foo <<bar ???
+	       ;;; XXX Need to support print {a} <<B ???
+				       (forward-sexp -1)
+				       (save-match-data	
+					; $foo << b; $f .= <<B;
+					; ($f+1) << b; a($f) . <<B;
+					; foo 1, <<B; $x{a} <<b;
+					 (cond
+					  ((looking-at "[0-9$({]")
+					   (forward-sexp 1)
+					   (looking-at "[ \t]*<<")))))
+				   (error nil))) ; func(<<EOF)
+			       (and (not (match-beginning 6)) ; Empty
+				    (looking-at
+				     "[ \t]*[=0-9$@%&(]"))))))
 		(if c			; Not here-doc
 		    nil			; Skip it.
 		  (setq c (match-end 2)) ; 1 + 1
@@ -5260,7 +5287,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		  (put-text-property b e1 'here-doc-group t)
 		  ;; This makes insertion at the start of HERE-DOC update
 		  ;; the whole construct:
-		  (put-text-property b (1+ b) 'front-sticky '(syntax-type))
+		  (put-text-property b (cperl-1+ b) 'front-sticky '(syntax-type))
 		  (cperl-commentify b e1 nil)
 		  (cperl-put-do-not-fontify b (match-end 0) t)
 		  ;; Cache the syntax info...
@@ -6870,7 +6897,8 @@ indentation and initial hashes.  Behaves usually outside of comment."
 					(forward-sexp 1)
 				      (error
 				       (condition-case nil
-					   (forward-char 200)))) ; typeahead
+					   (forward-char 200)
+					 (error nil)))) ; typeahead
 				    (1- (point))) ; report limit
 				(forward-char -2)) ; disable continued expr
 			     '(if (match-beginning 3)
@@ -9563,7 +9591,8 @@ do extra unwind via `cperl-unwind-to-safe'."
     (while (and end
 		(progn
 		  (or (bolp) (condition-case nil
-				 (forward-line 1)))
+				 (forward-line 1)
+			       (error nil)))
 		  (eq (get-text-property (setq end (point)) 'syntax-type)
 		      'multiline)))
       (setq end (next-single-property-change end 'syntax-type nil (point-max)))
@@ -9649,7 +9678,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 5.14 $"))
+  (let ((v  "$Revision: 5.15 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
