@@ -1,6 +1,7 @@
 ;;; cperl-mode.el --- Perl code editing commands for Emacs
 
-;; Copyright (C) 1985, 86, 87, 91, 92, 93, 94, 95, 96, 97, 98, 99, 2000, 2003
+;; Copyright (C) 1985, 86, 87, 91, 92, 93, 94, 95, 96, 97, 98, 99,
+;;               2000, 2003, 2005
 ;;     Free Software Foundation, Inc.
 
 ;; Author: Ilya Zakharevich and Bob Olson
@@ -44,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.3 2005/10/16 09:55:42 vera Exp vera $
+;; $Id: cperl-mode.el,v 5.7 2005/10/19 07:01:06 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1147,7 +1148,8 @@
 ;;;;;; c) Fontifies multiline my/our declarations (even with comments,
 ;;;;;;    and with legacy `font-lock').
 ;;;;;; d) Major speedup of syntaxification, both immediate and postponed
-;;;;;;    (3.5x on the huge real-life document I tested).
+;;;;;;    (3.5x to 15x [for different CPUs and versions of Emacs] on the
+;;;;;;    huge real-life document I tested).
 ;;;;;; e) New bindings, edits to imenu.
 ;;;;;; f) "_" is made into word-char during fontification/syntaxification;
 ;;;;;;    some attempts to recognize non-word "_" during other operations too.
@@ -1200,7 +1202,7 @@
 ;;; `cperl-find-sub-attrs':	New function
 ;;; `cperl-find-pods-heres':	Allow many <<EOP per line
 ;;;				Allow subs with attributes
-;;;				Major speedups (3.5x on a real-life
+;;;				Major speedups (3.5x..15x on a real-life
 ;;;				        test file nph-proxy.pl)
 ;;;				Recognize "extproc " (OS/2)
 ;;;				        case-folded and only at start
@@ -1252,6 +1254,22 @@
 ;;; `cperl-fontify-syntaxically': Would skip large regions
 ;;; Add `cperl-time-fontification', `cperl-emulate-lazy-lock' to menu
 ;;; Some globals were declared, but uninitialized
+
+;;;; After 5.3, 5.4:
+;;; `cperl-facemenu-add-face-function':	Add docs, fix U<>
+;;; Copyright message updated.
+;;; `cperl-init-faces':		Work around a bug in `font-lock'. May slow
+;;;					facification down a bit.
+;;;				Misprint for my|our|local for old `font-lock'
+;;;				"our" was not fontified same as "my|local"
+;;;				Highlight variables after "my" etc even in
+;;;					a middle of an expression
+;;;				Do not facify multiple variables after my etc
+;;;					unless parentheses are present
+
+;;; After 5.5, 5.6
+;;; `cperl-fontify-syntaxically': after-change hook could reset
+;;;	`cperl-syntax-done-to' to a middle of line; unwind to BOL.
 
 ;;; Code:
 
@@ -4641,7 +4659,7 @@ If `cperl-pod-here-fontify' is not-nil after evaluation, will fontify
 the sections using `cperl-pod-head-face', `cperl-pod-face',
 `cperl-here-face'."
   (interactive)
-  (or min (setq min (point-min)
+ (or min (setq min (point-min)
 		cperl-syntax-state nil
 		cperl-syntax-done-to min))
   (or max (setq max (point-max)))
@@ -5016,7 +5034,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		(setq b1 (if (match-beginning 10) 10 11)
 		      argument (buffer-substring
 				(match-beginning b1) (match-end b1))
-		      b (point)
+		      b (point)		; end of qq etc
 		      i b
 		      c (char-after (match-beginning b1))
 		      bb (char-after (1- (match-beginning b1))) ; tmp holder
@@ -5051,41 +5069,40 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			(setq argument ""
 			      b1 nil
 			      bb	; Not a regexp?
-			      (progn
-				(not
-				 ;; What is below: regexp-p?
-				 (and
-				  (or (memq (preceding-char)
-					    (append (if (memq c '(?\? ?\<))
-							;; $a++ ? 1 : 2
-							"~{(=|&*!,;:"
-						      "~{(=|&+-*!,;:") nil))
-				      (and (eq (preceding-char) ?\})
-					   (cperl-after-block-p (point-min)))
-				      (and (eq (char-syntax (preceding-char)) ?w)
-					   (progn
-					     (forward-sexp -1)
+			      (not
+			       ;; What is below: regexp-p?
+			       (and
+				(or (memq (preceding-char)
+					  (append (if (memq c '(?\? ?\<))
+						      ;; $a++ ? 1 : 2
+						      "~{(=|&*!,;:"
+						    "~{(=|&+-*!,;:") nil))
+				    (and (eq (preceding-char) ?\})
+					 (cperl-after-block-p (point-min)))
+				    (and (eq (char-syntax (preceding-char)) ?w)
+					 (progn
+					   (forward-sexp -1)
 ;;; After these keywords `/' starts a RE.  One should add all the
 ;;; functions/builtins which expect an argument, but ...
-					     (if (eq (preceding-char) ?-)
-						 ;; -d ?foo? is a RE
-						 (looking-at "[a-zA-Z]\\>")
-					       (and
-						(not (memq (preceding-char)
-							   '(?$ ?@ ?& ?%)))
-						(looking-at
-						 "\\(while\\|if\\|unless\\|until\\|and\\|or\\|not\\|xor\\|split\\|grep\\|map\\|print\\)\\>")))))
-				      (and (eq (preceding-char) ?.)
-					   (eq (char-after (- (point) 2)) ?.))
-				      (bobp))
-				  ;;  m|blah| ? foo : bar;
-				  (not
-				   (and (eq c ?\?)
-					cperl-use-syntax-table-text-property
-					(not (bobp))
-					(progn
-					  (forward-char -1)
-					  (looking-at "\\s|")))))))
+					   (if (eq (preceding-char) ?-)
+					       ;; -d ?foo? is a RE
+					       (looking-at "[a-zA-Z]\\>")
+					     (and
+					      (not (memq (preceding-char)
+							 '(?$ ?@ ?& ?%)))
+					      (looking-at
+					       "\\(while\\|if\\|unless\\|until\\|and\\|or\\|not\\|xor\\|split\\|grep\\|map\\|print\\)\\>")))))
+				    (and (eq (preceding-char) ?.)
+					 (eq (char-after (- (point) 2)) ?.))
+				    (bobp))
+				;;  m|blah| ? foo : bar;
+				(not
+				 (and (eq c ?\?)
+				      cperl-use-syntax-table-text-property
+				      (not (bobp))
+				      (progn
+					(forward-char -1)
+					(looking-at "\\s|"))))))
 			      b (1- b))
 		      ;; s y tr m
 		      ;; Check for $a -> y
@@ -5134,6 +5151,8 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				    (skip-chars-backward " \t\n\f")
 				    (memq (preceding-char)
 					  (append "$@%&*" nil))))
+			     (setq bb t))
+			    ((eobp)
 			     (setq bb t)))))
 		(if bb
 		    (goto-char i)
@@ -6215,7 +6234,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	       'identity
 	       '("if" "until" "while" "elsif" "else" "unless" "for"
 		 "foreach" "continue" "exit" "die" "last" "goto" "next"
-		 "redo" "return" "local" "exec" "sub" "do" "dump" "use"
+		 "redo" "return" "local" "exec" "sub" "do" "dump" "use" "our"
 		 "require" "package" "eval" "my" "BEGIN" "END" "CHECK" "INIT")
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
@@ -6299,7 +6318,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      ;; "chop" "defined" "delete" "do" "each" "else" "elsif"
 	      ;; "eval" "exists" "for" "foreach" "format" "goto"
 	      ;; "grep" "if" "keys" "last" "local" "map" "my" "next"
-	      ;; "no" "package" "pop" "pos" "print" "printf" "push"
+	      ;; "no" "our" "package" "pop" "pos" "print" "printf" "push"
 	      ;; "q" "qq" "qw" "qx" "redo" "return" "scalar" "shift"
 	      ;; "sort" "splice" "split" "study" "sub" "tie" "tr"
 	      ;; "undef" "unless" "unshift" "untie" "until" "use"
@@ -6381,25 +6400,42 @@ indentation and initial hashes.  Behaves usually outside of comment."
 				   (2 '(restart 2 nil) nil t)))
 			nil t)))	; local variables, multiple
 		  (font-lock-anchored
-		   (` ("^[ \t{}]*\\(my\\|local\\|our\\)\\([ \t\n]+\\|#[^\n]*\n\\)*\\((\\([ \t\n]+\\|#[^\n]*\n\\)*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
+		   ;; 1=my_etc, 2=white? 3=(+white? 4=white? 5=var
+		   (` ("\\<\\(my\\|local\\|our\\)\\([ \t\n]+\\|#[^\n]*\n\\)*\\((\\([ \t\n]+\\|#[^\n]*\n\\)*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
 		       (5 (, (if cperl-font-lock-multiline
 				 'font-lock-variable-name-face
 			       '(progn  (setq cperl-font-lock-multiline-start
 					      (match-beginning 0))
 					'font-lock-variable-name-face))))
-		     ("\\=\\([ \t\n]+\\|#[^\n]*\n\\)*,\\([ \t\n]+\\|#[^\n]*\n\\)*\\([$@%*][a-zA-Z0-9_:]+\\)"
-		      (point-max)	; Limit for continuation
-		      (, (if cperl-font-lock-multiline
-			     nil
-			   '(progn	; Do at end
-			      (if (> 2 (count-lines
-					cperl-font-lock-multiline-start (point)))
-				  nil
-				(put-text-property
-				 (1+ cperl-font-lock-multiline-start) (point)
-				 'syntax-type 'multiline)))))
-		      (3 font-lock-variable-name-face)))))
-		  (t '("^[ \t{}]*\\(my\\|local\\our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
+		       ("\\=\\([ \t\n]+\\|#[^\n]*\n\\)*,\\([ \t\n]+\\|#[^\n]*\n\\)*\\([$@%*][a-zA-Z0-9_:]+\\)"
+			;; Bug in font-lock: limit is used not only to limit 
+			;; searches, but to set the "extend window for
+			;; facification" property.  Thus we need to minimize.
+			(, (if cperl-font-lock-multiline
+			     '(if (match-beginning 3)
+				  (save-excursion
+				    (goto-char (match-beginning 3))
+				    (condition-case nil
+					(forward-sexp 1)
+				      (error
+				       (condition-case nil
+					   (forward-char 200)))) ; typeahead
+				    (1- (point))) ; report limit
+				(forward-char -1)) ; disable continued expr
+			     '(if (match-beginning 3)
+				  (point-max) ; No limit for continuation
+				(forward-char -1)))) ; disable continued expr
+			(, (if cperl-font-lock-multiline
+			       nil
+			     '(progn	; Do at end
+				(if (> 2 (count-lines
+					  cperl-font-lock-multiline-start (point)))
+				    nil
+				  (put-text-property
+				   (1+ cperl-font-lock-multiline-start) (point)
+				   'syntax-type 'multiline)))))
+			(3 font-lock-variable-name-face)))))
+		  (t '("^[ \t{}]*\\(my\\|local\\|our\\)[ \t]*\\(([ \t]*\\)?\\([$@%*][a-zA-Z0-9_:]+\\)"
 		       3 font-lock-variable-name-face)))
 	    '("\\<for\\(each\\)?\\([ \t]+\\(my\\|local\\|our\\)\\)?[ \t]*\\(\\$[a-zA-Z_][a-zA-Z_0-9]*\\)[ \t]*("
 	      4 font-lock-variable-name-face)))
@@ -8894,13 +8930,18 @@ POS defaults to the point."
      "When you are finished with narrow editing, type C-x n w")))
 
 (defun cperl-facemenu-add-face-function (face end)
+  "A callback to process user-initiated font-change requests.
+Translates `bold', `italic', and `bold-italic' requests to insertion of
+corresponding POD directives, and `underline' to C<> POD directive.
+
+Such requests are usually bound to M-o LETTER."
   (or (get-text-property (point) 'in-pod)
       (error "Faces can only be set within POD"))
   (setq facemenu-end-add-face (if (eq face 'bold-italic) ">>" ">"))
   (cdr (or (assq face '((bold . "B<")
 			(italic . "I<")
 			(bold-italic . "B<I<")
-			(underline . "U<")))
+			(underline . "C<")))
 	   (error "Face %s not configured for cperl-mode"
 		  face))))
 
@@ -9035,7 +9076,8 @@ do extra unwind via `cperl-unwind-to-safe'."
     (goto-char end)
     (while (and end
 		(progn
-		  (or (bolp) (forward-line 1))
+		  (or (bolp) (condition-case nil
+				 (forward-line 1)))
 		  (eq (get-text-property (setq end (point)) 'syntax-type)
 		      'multiline)))
       (if (setq end (next-single-property-change end 'syntax-type))
@@ -9056,16 +9098,17 @@ do extra unwind via `cperl-unwind-to-safe'."
     (or cperl-syntax-done-to
 	(setq cperl-syntax-done-to (point-min)
 	      from-start t))
-    (if (if (and cperl-hook-after-change
-		 (not from-start))
-	    nil				; cperl-syntax-done-to reflects edits
-	  (or (not (boundp 'font-lock-hot-pass))
+    (and (or (not cperl-hook-after-change)
+	     from-start)
+	 (or (not (boundp 'font-lock-hot-pass))
 	      (eval 'font-lock-hot-pass)
-	      t))			; Not debugged otherwise
-	;; Need to forget what is after `start'
-	(setq start (min cperl-syntax-done-to start))
-      ;; Fontification without a change; ignore start
-      (setq start cperl-syntax-done-to))
+	      t))
+    (setq start (if (and cperl-hook-after-change
+			 (not from-start))
+		    cperl-syntax-done-to ; Fontify without change; ignore start
+		  ;; Need to forget what is after `start'
+		  (min cperl-syntax-done-to start)))
+    (setq start (save-excursion (goto-char start) (beginning-of-line) (point)))
     (and (> end start)
 	 (setq cperl-syntax-done-to start) ; In case what follows fails
 	 (cperl-find-pods-heres start end t nil t))
@@ -9118,7 +9161,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "$Revision: 5.3 $"))
+  (let ((v  "$Revision: 5.7 $"))
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
