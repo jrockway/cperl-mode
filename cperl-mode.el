@@ -37,7 +37,7 @@
 ;; The latest version is available from
 ;; http://github.com/jrockway/cperl-mode
 ;;
-;; (perhaps in the moosex-declare branch)
+;; (perhaps in the mx-declare branch)
 
 ;; You can either fine-tune the bells and whistles of this mode or
 ;; bulk enable them by putting
