@@ -3347,6 +3347,10 @@ types and coercions in advance, with MooseX::Types."
           (when (looking-at "^[\\_$@*;&]+$")
             (put-text-property (match-beginning 0) (match-end 0)
                                'font-lock-face 'font-lock-builtin-face)
+
+            (put-text-property (match-beginning 0) (match-end 0)
+                               'syntax-table cperl-string-syntax-table)
+
             (goto-char (match-end 0)))
 
           ;; MX::Method::Signatures signature
