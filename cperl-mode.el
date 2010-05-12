@@ -48,7 +48,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 6.1 2008/04/03 01:04:08 vera Exp vera $
+;; $Id: cperl-mode.el,v 6.2 2008/04/14 23:14:52 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1616,6 +1616,11 @@
 ;;; toplevel:			Define obsolete alias for `pod-spell'
 ;;;				autoload updates to `mode-alist's
 
+;;; After 6.1:
+;;; toplevel:			Add .PM to autoload mode list
+;;; `cperl-insert-faces-example': New function
+;;; Mode menu:			New Micro-docs choice: Show Faces
+
 ;;; Code:
 
 (if (fboundp 'eval-when-compile)
@@ -3020,6 +3025,7 @@ versions of Emacs."
 	  ["Speed" (describe-variable 'cperl-speed) t]
 	  ["Praise" (describe-variable 'cperl-praise) t]
 	  ["Faces" (describe-variable 'cperl-tips-faces) t]
+	  ["Show Faces" (cperl-insert-faces-example) t]
 	  ["CPerl mode" (describe-function 'cperl-mode) t]
 	  ["CPerl version"
 	   (message "The version of master-file for this CPerl is %s"
@@ -3331,8 +3337,9 @@ corresponding variables.  Use \\[cperl-set-style] to do this.  Use
 Part of the indentation style is how different parts of if/elsif/else
 statements are broken into lines; in CPerl, this is reflected on how
 templates for these constructs are created (controlled by
-`cperl-extra-newline-before-brace'), and how reflow-logic should treat \"continuation\" blocks of else/elsif/continue, controlled by the same variable,
-and by `cperl-extra-newline-before-brace-multiline',
+`cperl-extra-newline-before-brace'), and how reflow-logic should treat
+\"continuation\" blocks of else/elsif/continue, controlled by the same
+variable, and by `cperl-extra-newline-before-brace-multiline',
 `cperl-merge-trailing-else', `cperl-indent-region-fix-constructs'.
 
 If `cperl-indent-level' is 0, the statement after opening brace in
@@ -3342,9 +3349,10 @@ column 0 is indented on
 Turning on CPerl mode calls the hooks in the variable `cperl-mode-hook'
 with no args.
 
-DO NOT FORGET to read micro-docs (available from `Perl' menu)
+DO NOT FORGET to read micro-docs (available from `Perl' menu,
 or as help on variables `cperl-tips', `cperl-problems',
-`cperl-non-problems', `cperl-praise', `cperl-speed'."
+`cperl-non-problems', `cperl-praise', `cperl-speed',
+`cperl-tips-faces')."
   (interactive)
   (kill-all-local-variables)
   (use-local-map cperl-mode-map)
@@ -3558,6 +3566,30 @@ or as help on variables `cperl-tips', `cperl-problems',
       (or cperl-syntaxify-by-font-lock
        (progn (or cperl-faces-init (cperl-init-faces-weak))
 	      (cperl-find-pods-heres)))))
+
+(defun cperl-insert-faces-example ()
+  "Insert example \"CODE\" demonstrating CPerl facification at beginning-of-line."
+  (or (bolp)
+      (beginning-of-line))
+  (insert
+  "my $o = sprintf grep //, <<EOP, $ENV{$_} or warn $$msg[0] for @ARGV; #junk 
+some string
+EOP
+-f _ or -f $_ or die 'What?';
+
+/\\3333\\xFg\\x{FFF}a\\ppp\\PPP\\qqq\\C\\99f(?{  foo  })(??{  foo  })/;
+/a{4,5}\\.b[^a[:ff:]b]x$ab->$[|$,$ab->[cd]->[ef]|$ab[xy].|^${a,b}{c,d}/;
+/(?<=foo)(?<!bar)(x\")(?:$ab|\\$\\/)$|\\\\\\b\\x888\\776\\[\\:$/xxx;
+m?(\\?\\?{b,a})? + m/(??{aa})(?(?=xx)aa|bb)(?#aac)/;
+m$(^ab[c]\\$)$ + m+(^ab[c]\\$\\+)+ + m](^ab[c\\]$|.+)] + m)(^ab[c]$|.+\\));
+s{a}{};
+s/.a//;
+m^a[\\^b-e\\xFF]c^ + m.a[^b]\\.c.;					#  OK
+m^a[\\^-b-\\e--[\\--\\xFF\\c[\\cX-\\0333-\\0555-\\N{name}\\pp--\\P{prop}--\\\\\\05555]^;
+m^a[[:alpha:]-[:alpha:]-a-[:alpha:][-aa-[[:alpha:]-b-[:alpha:]-[:alpha:]]^;
+m^a[x\\\\[:alpha:]-\\\\[:alpha:]-a-\\\\[:alpha:][-aa-[[:alpha:]-b-\\\\[:alpha:]-\\\\[:alpha:]]^;
+m^a[x\\\\[:alpha:][:alpha:]\\\\[:alpha:][-aa-[[:alpha:]\\\\[:alpha:][:alpha:]]^;
+"))
 
 ;; Fix for perldb - make default reasonable
 (defun cperl-db ()
@@ -10771,7 +10803,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "Revision: 6.1-Pugs/Github "))
+  (let ((v  "Revision: 6.2-Pugs/Github "))
     (string-match ":\\s *\\([-0-9a-z.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
@@ -10781,7 +10813,7 @@ do extra unwind via `cperl-unwind-to-safe'."
       (funcall f 'pod-spell 'cperl-pod-spell)))		; Avoid "not defined"
 
 ;; XEmacs additions
-;;;###autoload(add-to-list 'auto-mode-alist '("\\.\\([pP][Llm]\\|al\\)\\'" . perl-mode))
+;;;###autoload(add-to-list 'auto-mode-alist '("\\.\\([pP][LlMm]\\|al\\)\\'" . perl-mode))
 ;;;###autoload(add-to-list 'interpreter-mode-alist '("perl" . perl-mode))
 
 (provide 'cperl-mode)
