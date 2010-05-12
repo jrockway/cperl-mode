@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.24 2008/01/19 22:46:45 vera Exp $
+;; $Id: cperl-mode.el,v 6.0 2008/03/31 23:07:24 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1591,8 +1591,20 @@
 ;;;					semantic than in XEmacs21
 ;;;					(Thanks to Mark T. Kennedy)
 ;;; toplevel:			Need to defvar `compilation-error-regexp-alist'
-;;; `cperl-find-pods-heres':	Check for misparse treated s/a// as misparse
+;;; `cperl-find-pods-heres':	Check for unfinished s treated s/a// as such
+;;;				Better comments in REx highlighting
+;;;				Highlighting of - in charclasses
+;;;				(Does not pay attention to alphanum/dash delim)
 ;;; `cperl-forward-re':		Do not print "unmatched" during electric {
+
+;;; After 5.24:
+;;; `cperl-find-pods-heres':	Better comments in REx highlighting
+;;;				Treat backslashes before POSIX charclass better
+;;;				Highlighting of - and \ESCAPED in charclasses
+;;;				  (Doesnt pay attention to alphanum/dash delim)
+;;;				Change POSIX class highlight to variable-name
+;;; `cperl-highlight-charclass': New subst
+;;; `cperl-tips-faces'		Correct literal backwacks, mention multipliers
 
 ;;; Code:
 
@@ -2592,7 +2604,7 @@ m// and s/// which do not do what one would expect them to do.
 Help with best setup of these faces for printout requested (for each of
 the faces: please specify bold, italic, underline, shadow and box.)
 
-In regular expressions (except character classes):
+In regular expressions (including character classes):
   `font-lock-string-face'	\"Normal\" stuff and non-0-length constructs
   `font-lock-constant-face':	Delimiters
   `font-lock-warning-face'	Special-cased m// and s//foo/,
@@ -2600,14 +2612,16 @@ In regular expressions (except character classes):
 				we couldn't match, misplaced quantifiers,
 				unrecognized escape sequences
   `cperl-nonoverridable-face'	Modifiers, as gism in m/REx/gism
-  `font-lock-type-face'		POSIX classes inside charclasses,
-				escape sequences with arguments (\x \23 \p \N)
+  `font-lock-type-face'		escape sequences with arguments (\\x \\23 \\p \\N)
 				and others match-a-char escape sequences
   `font-lock-keyword-face'	Capturing parens, and |
   `font-lock-function-name-face' Special symbols: $ ^ . [ ] [^ ] (?{ }) (??{ })
-  `font-lock-builtin-face'	\"Remaining\" 0-length constructs, executable
-				parts of a REx, not-capturing parens
-  `font-lock-variable-name-face' Interpolated constructs, embedded code
+				\"Range -\" in character classes
+  `font-lock-builtin-face'	\"Remaining\" 0-length constructs, multipliers
+				?+*{}, not-capturing parens, leading
+				backslashes of escape sequences
+  `font-lock-variable-name-face' Interpolated constructs, embedded code,
+				POSIX classes (inside charclasses)
   `font-lock-comment-face'	Embedded comments
 
 ")
@@ -5225,6 +5239,54 @@ Should be called with the point before leading colon of an attribute."
 	 (1- (point)) (point)
 	 'face font-lock-warning-face))))
 
+;; Do some smarter-highlighting
+;; XXXX Currently ignores alphanum/dash delims,
+(defsubst cperl-highlight-charclass (endbracket dashface bsface onec-space)
+  (let ((l '(1 5 7)) ll lle lll
+	;; 2 groups, the first takes the whole match (include \[trnfabe])
+	(singleChar (concat "\\(" "[^\\\\]" "\\|" "\\\\[^cdg-mo-qsu-zA-Z0-9_]" "\\|" "\\\\c." "\\|" "\\\\x" "\\([0-9a-fA-F][0-9a-fA-F]?\\|\\={[0-9a-fA-F]+}\\)" "\\|" "\\\\0?[0-7][0-7]?[0-7]?" "\\|" "\\\\N{[^{}]*}" "\\)")))
+    (while				; look for unescaped - between non-classes
+	(re-search-forward
+	 ;; On 19.33, certain simplifications lead
+	 ;; to bugs (as in  [^a-z] \\| [trnfabe]  )
+	 (concat	       		; 1: SingleChar (include \[trnfabe])
+	  singleChar
+	  ;;"\\(" "[^\\\\]" "\\|" "\\\\[^cdg-mo-qsu-zA-Z0-9_]" "\\|" "\\\\c." "\\|" "\\\\x" "\\([0-9a-fA-F][0-9a-fA-F]?\\|\\={[0-9a-fA-F]+}\\)" "\\|" "\\\\0?[0-7][0-7]?[0-7]?" "\\|" "\\\\N{[^{}]*}" "\\)"
+	  "\\("				; 3: DASH SingleChar (match optionally)
+	    "\\(-\\)"			; 4: DASH
+	    singleChar			; 5: SingleChar
+	    ;;"\\(" "[^\\\\]" "\\|" "\\\\[^cdg-mo-qsu-zA-Z0-9_]" "\\|" "\\\\c." "\\|" "\\\\x" "\\([0-9a-fA-F][0-9a-fA-F]?\\|\\={[0-9a-fA-F]+}\\)" "\\|" "\\\\0?[0-7][0-7]?[0-7]?" "\\|" "\\\\N{[^{}]*}" "\\)"
+	  "\\)?"
+	  "\\|"
+	  "\\("				; 7: other escapes
+	    "\\\\[pP]" "\\([^{]\\|{[^{}]*}\\)"
+	    "\\|" "\\\\[^pP]" "\\)"
+	  )
+	 endbracket 'toend)
+      (if (match-beginning 4)
+	  (cperl-postpone-fontification
+	   (match-beginning 4) (match-end 4)
+	   'face dashface))
+      ;; save match data (for looking-at)
+      (setq lll (mapcar (function (lambda (elt) (cons (match-beginning elt)
+						      (match-end elt)))) l))
+      (while lll
+	(setq ll (car lll))
+	(setq lle (cdr ll)
+	      ll (car ll))
+	;; (message "Got %s of %s" ll l)
+	(if (and ll (eq (char-after ll) ?\\ ))
+	    (save-excursion
+	      (goto-char ll)
+	      (cperl-postpone-fontification ll (1+ ll)
+	       'face bsface)
+	      (if (looking-at "\\\\[a-zA-Z0-9]")
+		  (cperl-postpone-fontification (1+ ll) lle
+		   'face onec-space))))
+	(setq lll (cdr lll))))
+    (goto-char endbracket)		; just in case something misbehaves???
+    t))
+
 ;;; Debugging this may require (setq max-specpdl-size 2000)...
 (defun cperl-find-pods-heres (&optional min max non-inter end ignore-max end-of-here-doc)
   "Scans the buffer for hard-to-parse Perl constructions.
@@ -5925,13 +5987,17 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		    (if (and is-REx cperl-regexp-scan)
 			;; Process RExen: embedded comments, charclasses and ]
 ;;;/\3333\xFg\x{FFF}a\ppp\PPP\qqq\C\99f(?{  foo  })(??{  foo  })/;
-;;;/a\.b[^a[:ff:]b]x$ab->$[|$,$ab->[cd]->[ef]|$ab[xy].|^${a,b}{c,d}/;
+;;;/a{4,5}\.b[^a[:ff:]b]x$ab->$[|$,$ab->[cd]->[ef]|$ab[xy].|^${a,b}{c,d}/;
 ;;;/(?<=foo)(?<!bar)(x")(?:$ab|\$\/)$|\\\b\x888\776\[\:$/xxx;
 ;;;m?(\?\?{b,a})? + m/(??{aa})(?(?=xx)aa|bb)(?#aac)/;
 ;;;m$(^ab[c]\$)$ + m+(^ab[c]\$\+)+ + m](^ab[c\]$|.+)] + m)(^ab[c]$|.+\));
 ;;;s{a}{};
-;;;s/a//;
-;;;m^a[\^b]c^ + m.a[^b]\.c.;						#  OK
+;;;s/.a//;
+;;;m^a[\^b-e\xFF]c^ + m.a[^b]\.c.;					#  OK
+;;;m^a[\^-b-\e--[\--\xFF\c[\cX-\0333-\0555-\N{name}\pp--\P{prop}--\\\05555]^;
+;;;m^a[[:alpha:]-[:alpha:]-a-[:alpha:][-aa-[[:alpha:]-b-[:alpha:]-[:alpha:]]^;
+;;;m^a[x\\[:alpha:]-\\[:alpha:]-a-\\[:alpha:][-aa-[[:alpha:]-b-\\[:alpha:]-\\[:alpha:]]^;
+;;;m^a[x\\[:alpha:][:alpha:]\\[:alpha:][-aa-[[:alpha:]\\[:alpha:][:alpha:]]^;
 			(save-excursion
 			  (goto-char (1+ b))
 			  ;; First 
@@ -6118,6 +6184,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				   'face my-cperl-REx-length1-face))))
 			      (setq was-subgr nil)) ; We do stuff here
 			     ((match-beginning 3) ; [charclass]
+			      ;; Highlight leader, trailer, POSIX classes
 			      (forward-char 1)
 			      (if (eq (char-after b) ?^ )
 				  (and (eq (following-char) ?\\ )
@@ -6126,9 +6193,9 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				       (forward-char 2))
 				(and (eq (following-char) ?^ )
 				     (forward-char 1)))
-			      (setq argument b ; continue?
+			      (setq argument b ; continue? & end of last POSIX
 				    tag nil ; list of POSIX classes
-				    qtag (point))
+				    qtag (point)) ; after leading ^ if present
 			      (if (eq (char-after b) ?\] )
 				  (and (eq (following-char) ?\\ )
 				       (eq (char-after (cperl-1+ (point)))
@@ -6137,11 +6204,12 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				       (forward-char 2))
 				(and (eq (following-char) ?\] )
 				     (forward-char 1)))
+			      (setq REx-subgr-end qtag)	;EndOf smart-highlighed
 			      ;; Apparently, I can't put \] into a charclass
 			      ;; in m]]: m][\\\]\]] produces [\\]]
 ;;; POSIX?  [:word:] [:^word:] only inside []
-;;;				       "\\=\\(\\\\.\\|[^][\\\\]\\|\\[:\\^?\sw+:]\\|\\[[^:]\\)*]")
-			      (while 
+;;;	       "\\=\\(\\\\.\\|[^][\\\\]\\|\\[:\\^?\sw+:]\\|\\[[^:]\\)*]")
+			      (while	; look for unescaped ]
 				  (and argument
 				       (re-search-forward
 					(if (eq (char-after b) ?\] )
@@ -6153,11 +6221,11 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 				      (and
 				       (search-backward "[" argument t)
 				       (< REx-subgr-start (point))
-				       (not
-					(and ; Should work with delim = \
-					 (eq (preceding-char) ?\\ )
-					 (= (% (skip-chars-backward
-						"\\\\") 2) 0)))
+				       (setq argument (point)) ; POSIX-start
+				       (or ; Should work with delim = \
+					(not (eq (preceding-char) ?\\ ))
+					;; XXXX Double \\ is needed with 19.33
+					(= (% (skip-chars-backward "\\\\") 2) 0))
 				       (looking-at
 					(cond
 					 ((eq (char-after b) ?\] )
@@ -6173,14 +6241,25 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 					   (char-to-string (char-after b))
 					   "\\|\\sw\\)+:\]"))
 					 (t "\\\\*\\[:\\^?\\sw*:]")))
-				       (setq argument (point))))
+				       (goto-char REx-subgr-end)
+				       (cperl-highlight-charclass
+					argument my-cperl-REx-spec-char-face
+					my-cperl-REx-0length-face my-cperl-REx-length1-face)))
 				    (setq tag (cons (cons argument (point))
 						    tag)
-					  argument (point)) ; continue
+					  argument (point)
+					  REx-subgr-end argument) ; continue
 				  (setq argument nil)))
 			      (and argument
 				   (message "Couldn't find end of charclass in a REx, pos=%s"
 					    REx-subgr-start))
+			      (setq argument (1- (point)))
+			      (goto-char REx-subgr-end)
+			      (cperl-highlight-charclass
+			       argument my-cperl-REx-spec-char-face
+			       my-cperl-REx-0length-face my-cperl-REx-length1-face)
+			      (forward-char 1)
+			      ;; Highlight starter, trailer, POSIX
 			      (if (and cperl-use-syntax-table-text-property
 				       (> (- (point) 2) REx-subgr-start))
 				  (put-text-property
@@ -6199,7 +6278,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			      (while tag
 				(cperl-postpone-fontification
 				 (car (car tag)) (cdr (car tag))
-				 'face my-cperl-REx-length1-face)
+				 'face font-lock-variable-name-face) ;my-cperl-REx-length1-face
 				(setq tag (cdr tag)))
 			      (setq was-subgr nil)) ; did facing already
 			     ;; Now rare stuff:
@@ -10654,7 +10733,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "Revision: 5.24-Pugs/Github "))
+  (let ((v  "Revision: 6.0-Pugs/Github "))
     (string-match ":\\s *\\([-0-9a-z.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
