@@ -45,7 +45,7 @@
 
 ;;; Commentary:
 
-;; $Id: cperl-mode.el,v 5.21 2006/10/01 08:46:05 vera Exp vera $
+;; $Id: cperl-mode.el,v 5.22 2006/10/03 08:16:35 vera Exp vera $
 
 ;;; If your Emacs does not default to `cperl-mode' on Perl files:
 ;;; To use this mode put the following into
@@ -1532,7 +1532,8 @@
 ;;; `cperl-set-style':		Docstring missed some available styles
 ;;; toplevel:			Menubar/Perl/Indent-Styles had FSF, now K&R
 ;;;				Change "Current" to "Memorize Current"
-;;; `cperl-indent-wrt-brace':	New customization variable
+;;; `cperl-indent-wrt-brace':	New customization variable; the default is
+;;;				as for pre-5.2 version
 ;;; `cperl-styles-entries':	Keep `cperl-extra-newline-before-brace-multiline'
 ;;; `cperl-style-alist':	Likewise
 ;;; `cperl-fix-line-spacing':	Support `cperl-merge-trailing-else' being nil,
@@ -1541,6 +1542,16 @@
 ;;; `cperl-indent-exp':		Plans B and C to find continuation blocks even
 ;;;				if `cperl-extra-newline-before-brace' is t
 
+;;; After 5.21:
+;;; Improve some docstrings concerning indentation.
+;;; `cperl-indent-rules-alist':	New variable
+;;; `cperl-sniff-for-indent':	New function name
+;;				(separated from `cperl-calculate-indent')
+;;; `cperl-calculate-indent':	Separated the sniffer and the indenter;
+;;;				uses `cperl-sniff-for-indent' now
+;;; `cperl-comment-indent':	Test for `cperl-indent-comment-at-column-0'
+;;;				was inverted;
+;;;				Support `comment-column' = 0
 ;;; Code:
 
 (if (fboundp 'eval-when-compile)
@@ -1566,7 +1577,6 @@
       (defvar paren-backwards-message)	; Not in newer XEmacs?
       (defvar vc-rcs-header)		; likewise?
       (defvar vc-sccs-header)		; likewise?
-      (defvar compilation-error-regexp-alist) ; used in Emacs 22
       (or (fboundp 'defgroup)
 	  (defmacro defgroup (name val doc &rest arr)
 	    nil))
@@ -3228,16 +3238,24 @@ Variables controlling indentation style:
  `cperl-min-label-indent'
     Minimal indentation for line that is a label.
 
-Settings for K&R and BSD indentation styles are
-  `cperl-indent-level'                5    8
-  `cperl-continued-statement-offset'  5    8
-  `cperl-brace-offset'               -5   -8
-  `cperl-label-offset'               -5   -8
+Settings for classic indent-styles: K&R BSD=C++ GNU PerlStyle=Whitesmith
+  `cperl-indent-level'                5   4       2   4
+  `cperl-brace-offset'                0   0       0   0
+  `cperl-continued-brace-offset'     -5  -4       0   0
+  `cperl-label-offset'               -5  -4      -2  -4
+  `cperl-continued-statement-offset'  5   4       2   4
 
 CPerl knows several indentation styles, and may bulk set the
 corresponding variables.  Use \\[cperl-set-style] to do this.  Use
 \\[cperl-set-style-back] to restore the memorized preexisting values
-\(both available from menu).
+\(both available from menu).  See examples in `cperl-style-examples'.
+
+Part of the indentation style is how different parts of if/elsif/else
+statements are broken into lines; in CPerl, this is reflected on how
+templates for these constructs are created (controlled by
+`cperl-extra-newline-before-brace'), and how reflow-logic should treat \"continuation\" blocks of else/elsif/continue, controlled by the same variable,
+and by `cperl-extra-newline-before-brace-multiline',
+`cperl-merge-trailing-else', `cperl-indent-region-fix-constructs'.
 
 If `cperl-indent-level' is 0, the statement after opening brace in
 column 0 is indented on
@@ -3504,7 +3522,7 @@ or as help on variables `cperl-tips', `cperl-problems',
 
 (defun cperl-comment-indent ()		; called at point at supposed comment
   (let ((p (point)) (c (current-column)) was phony)
-    (if (and cperl-indent-comment-at-column-0
+    (if (and (not cperl-indent-comment-at-column-0)
 	     (looking-at "^#"))
 	0	; Existing comment at bol stays there.
       ;; Wrong comment found
@@ -3521,8 +3539,11 @@ or as help on variables `cperl-tips', `cperl-problems',
 	(if (= (point) p)		; Our caller found a correct place
 	    (progn
 	      (skip-chars-backward " \t")
-	      (max (1+ (current-column)) ; Else indent at comment column
-		   comment-column))
+	      (setq was (current-column))
+	      (if (eq was 0)
+		  comment-column
+		(max (1+ was) ; Else indent at comment column
+		     comment-column)))
 	  ;; No, the caller found a random place; we need to edit ourselves
 	  (if was nil
 	    (insert comment-start)
@@ -4281,41 +4302,37 @@ Will not look before LIM."
 ;;;	       (point-min))))
   )
 
-(defun cperl-calculate-indent (&optional parse-data) ; was parse-start
-  "Return appropriate indentation for current line as Perl code.
-In usual case returns an integer: the column to indent to.
-Returns nil if line starts inside a string, t if in a comment.
-
-Will not correct the indentation for labels, but will correct it for braces
-and closing parentheses and brackets."
+(defun cperl-sniff-for-indent (&optional parse-data) ; was parse-start
+  ;; Old workhorse for calculation of indentation; the major problem
+  ;; is that it mixes the sniffer logic to understand what the current line
+  ;; MEANS with the logic to actually calculate where to indent it.
+  ;; The latter part should be eventually moved to `cperl-calculate-indent';
+  ;; actually, this is mostly done now...
   (cperl-update-syntaxification (point) (point))
-  (save-excursion
-    (if (or
-	 (and (memq (get-text-property (point) 'syntax-type)
-		    '(pod here-doc here-doc-delim format))
-	      (not (get-text-property (point) 'indentable)))
-	 ;; before start of POD - whitespace found since do not have 'pod!
-	 (and (looking-at "[ \t]*\n=")
-	      (error "Spaces before POD section!"))
-	 (and (not cperl-indent-left-aligned-comments)
-	      (looking-at "^#")))
-	nil
-      (beginning-of-line)
-      (let* ((indent-point (point))
-	     (char-after-pos (save-excursion
-			       (skip-chars-forward " \t")
-			       (point)))
-	     (char-after (char-after char-after-pos))
-	     (in-pod (get-text-property (point) 'in-pod))
-	     (pre-indent-point (point))
-	     p prop look-prop is-block delim)
-	(cond
-	 (in-pod
-	  ;; In the verbatim part, probably code example.  What to do???
-	  )
-	 (t
-	  (save-excursion
-	    ;; Not in POD
+  (let ((res (get-text-property (point) 'syntax-type)))
+    (save-excursion
+      (cond
+       ((and (memq res '(pod here-doc here-doc-delim format))
+	     (not (get-text-property (point) 'indentable)))
+	(vector res))
+       ;; before start of POD - whitespace found since do not have 'pod!
+       ((looking-at "[ \t]*\n=")
+	(error "Spaces before POD section!"))
+       ((and (not cperl-indent-left-aligned-comments)
+	     (looking-at "^#"))
+	[comment-special:at-beginning-of-line])
+       ((get-text-property (point) 'in-pod)
+	[in-pod])
+       (t
+	(beginning-of-line)
+	(let* ((indent-point (point))
+	       (char-after-pos (save-excursion
+				 (skip-chars-forward " \t")
+				 (point)))
+	       (char-after (char-after char-after-pos))
+	       (pre-indent-point (point))
+	       p prop look-prop is-block delim)
+	  (save-excursion		; Know we are not in POD, find appropriate pos before
 	    (cperl-backward-to-noncomment nil)
 	    (setq p (max (point-min) (1- (point)))
 		  prop (get-text-property p 'syntax-type)
@@ -4325,331 +4342,431 @@ and closing parentheses and brackets."
 		(progn
 		  (goto-char (cperl-beginning-of-property p look-prop))
 		  (beginning-of-line)
-		  (setq pre-indent-point (point)))))))
-	(goto-char pre-indent-point)
-	(let* ((case-fold-search nil)
-	       (s-s (cperl-get-state (car parse-data) (nth 1 parse-data)))
-	       (start (or (nth 2 parse-data)
-			  (nth 0 s-s)))
-	       (state (nth 1 s-s))
-	       (containing-sexp (car (cdr state)))
-	       old-indent)
-	  (if (and
-	       ;;containing-sexp		;; We are buggy at toplevel :-(
-	       parse-data)
-	      (progn
-		(setcar parse-data pre-indent-point)
-		(setcar (cdr parse-data) state)
-		(or (nth 2 parse-data)
-		    (setcar (cddr parse-data) start))
-		;; Before this point: end of statement
-		(setq old-indent (nth 3 parse-data))))
-	  (cond ((get-text-property (point) 'indentable)
-		 ;; indent to "after" the surrounding open
-		 ;; (same offset as `cperl-beautify-regexp-piece'),
-		 ;; skip blanks if we do not close the expression.
-		 (setq delim		; We do not close the expression
-		       (get-text-property
-			(cperl-1+ char-after-pos) 'indentable)
-		       p (1+ (cperl-beginning-of-property
-			      (point) 'indentable))
-		       is-block		; misused for: preceeding line in REx
-		       (save-excursion	; Find preceeding line
-			 (cperl-backward-to-noncomment p)
-			 (beginning-of-line)
-			 (if (<= (point) p)
-			     (progn	; get indent from the first line
-			       (goto-char p)
-			       (skip-chars-forward " \t")
-			       (if (memq (char-after (point))
-					 (append "#\n" nil))
-				   nil	; Can't use intentation of this line...
-				 (point)))
-			   (skip-chars-forward " \t")
-			   (point)))
-		       prop (parse-partial-sexp p char-after-pos))
-		 (cond ((not delim)
-			(goto-char p)	; beginning of REx etc
-			(1- (current-column))) ; End the REx, ignore is-block
-		       (is-block
-			;; Indent as the level after closing parens
-			(goto-char char-after-pos)
-			(skip-chars-forward " \t)")
-			(setq char-after-pos (point))
-			(goto-char is-block)
-			(skip-chars-forward " \t)")
-			(setq p (parse-partial-sexp (point) char-after-pos))
-			(goto-char is-block)
-			(+ (* (nth 0 p)
-			      (or cperl-regexp-indent-step cperl-indent-level))
-			   (cond ((eq char-after ?\) )
-				  (- cperl-close-paren-offset)) ; compensate
-				 ((eq char-after ?\| )
-				  (- (or cperl-regexp-indent-step cperl-indent-level)))
-				 (t 0))
-			   (if (eq (following-char) ?\| )
-			       (or cperl-regexp-indent-step cperl-indent-level)
-			     0)
-			   (current-column)))
-		       ;; Now we have no preceeding line...
-		       (t
-			(goto-char p)
-			(+ (or cperl-regexp-indent-step cperl-indent-level)
-			   -1
-			   (current-column)))))
-		((get-text-property char-after-pos 'REx-part2)
-		 (condition-case nil	; Use indentation of the 1st part
-		     (forward-sexp -1))
-		 (current-column))
-		((or (nth 3 state) (nth 4 state))
-		 ;; return nil or t if should not change this line
-		 (nth 4 state))
-		;; XXXX Do we need to special-case this?
-		((null containing-sexp)
-		 ;; Line is at top level.  May be data or function definition,
-		 ;; or may be function argument declaration.
-		 ;; Indent like the previous top level line
-		 ;; unless that ends in a closeparen without semicolon,
-		 ;; in which case this line is the first argument decl.
-		 (skip-chars-forward " \t")
-		 (+ (save-excursion
-		      (goto-char start)
-		      (- (current-indentation)
-			 (if (nth 2 s-s) cperl-indent-level 0)))
-		    (if (eq char-after ?{) cperl-continued-brace-offset 0)
-		    (progn
-		      (cperl-backward-to-noncomment (or old-indent (point-min)))
-		      ;; Look at previous line that's at column 0
-		      ;; to determine whether we are in top-level decls
-		      ;; or function's arg decls.  Set basic-indent accordingly.
-		      ;; Now add a little if this is a continuation line.
-		      (if (or (bobp)
-			      (eq (point) old-indent) ; old-indent was at comment
-			      (eq (preceding-char) ?\;)
-			      ;;  Had ?\) too
-			      (and (eq (preceding-char) ?\})
-				   (cperl-after-block-and-statement-beg
-				    (point-min))) ; Was start - too close
-			      (memq char-after (append ")]}" nil))
-			      (and (eq (preceding-char) ?\:) ; label
-				   (progn
-				     (forward-sexp -1)
-				     (skip-chars-backward " \t")
-				     (looking-at "[ \t]*[a-zA-Z_][a-zA-Z_0-9]*[ \t]*:")))
-			      (get-text-property (point) 'first-format-line))
-			  (progn
-			    (if (and parse-data
-				     (not (eq char-after ?\C-j)))
-				(setcdr (cddr parse-data)
-					(list pre-indent-point)))
-			    0)
-			cperl-continued-statement-offset))))
-		((not
-		  (or (setq is-block
-			    (and (setq delim (= (char-after containing-sexp) ?{))
-				 (save-excursion ; Is it a hash?
-				   (goto-char containing-sexp)
-				   (cperl-block-p))))
-		      cperl-indent-parens-as-block))
-		 ;; group is an expression, not a block:
-		 ;; indent to just after the surrounding open parens,
-		 ;; skip blanks if we do not close the expression.
-		 (goto-char (1+ containing-sexp))
-		 (or (memq char-after
-			   (append (if delim "}" ")]}") nil))
-		     (looking-at "[ \t]*\\(#\\|$\\)")
-		     (skip-chars-forward " \t"))
-		 (+ (current-column)
-		    (if (and delim
-			     (eq char-after ?\}))
-			;; Correct indentation of trailing ?\}
-			(+ cperl-indent-level cperl-close-paren-offset)
-		      0)))
-;;;	      ((and (/= (char-after containing-sexp) ?{)
-;;;		    (not cperl-indent-parens-as-block))
-;;;	       ;; line is expression, not statement:
-;;;	       ;; indent to just after the surrounding open,
-;;;	       ;; skip blanks if we do not close the expression.
-;;;	       (goto-char (1+ containing-sexp))
-;;;	       (or (memq char-after (append ")]}" nil))
-;;;		   (looking-at "[ \t]*\\(#\\|$\\)")
-;;;		   (skip-chars-forward " \t"))
-;;;	       (current-column))
-;;;	      ((progn
-;;;		 ;; Containing-expr starts with \{.  Check whether it is a hash.
-;;;		 (goto-char containing-sexp)
-;;;		 (and (not (cperl-block-p))
-;;;		      (not cperl-indent-parens-as-block)))
-;;;	       (goto-char (1+ containing-sexp))
-;;;	       (or (eq char-after ?\})
-;;;		   (looking-at "[ \t]*\\(#\\|$\\)")
-;;;		   (skip-chars-forward " \t"))
-;;;	       (+ (current-column)	; Correct indentation of trailing ?\}
-;;;		  (if (eq char-after ?\}) (+ cperl-indent-level
-;;;					     cperl-close-paren-offset)
-;;;		    0)))
-		(t
-		 ;; Statement level.  Is it a continuation or a new statement?
-		 ;; Find previous non-comment character.
-		 (goto-char pre-indent-point)
-		 (cperl-backward-to-noncomment containing-sexp)
-		 ;; Back up over label lines, since they don't
-		 ;; affect whether our line is a continuation.
-		 ;; (Had \, too)
-		 (while;;(or (eq (preceding-char) ?\,)
-		     (and (eq (preceding-char) ?:)
-			  (or;;(eq (char-after (- (point) 2)) ?\') ; ????
-			   (memq (char-syntax (char-after (- (point) 2)))
-				 '(?w ?_))))
-		   ;;)
-		   (if (eq (preceding-char) ?\,)
-		       ;; Will go to beginning of line, essentially.
-		       ;; Will ignore embedded sexpr XXXX.
-		       (cperl-backward-to-start-of-continued-exp containing-sexp))
-		   (beginning-of-line)
-		   (cperl-backward-to-noncomment containing-sexp))
-		 ;; Now we get the answer.
-		 (if (not (or (eq (1- (point)) containing-sexp)
-			      (memq (preceding-char)
-				    (append (if is-block " ;{" " ,;{") '(nil)))
-			      (and (eq (preceding-char) ?\})
-				   (cperl-after-block-and-statement-beg
-				    containing-sexp))
-			      (get-text-property (point) 'first-format-line)))
-		     ;; This line is continuation of preceding line's statement;
-		     ;; indent  `cperl-continued-statement-offset'  more than the
-		     ;; previous line of the statement.
-		     ;;
-		     ;; There might be a label on this line, just
-		     ;; consider it bad style and ignore it.
-		     (progn
-		       (cperl-backward-to-start-of-continued-exp containing-sexp)
-		       (+ (if (memq char-after (append "}])" nil))
-			      0		; Closing parenth
-			    cperl-continued-statement-offset)
-			  (if (or is-block
-				  (not delim)
-				  (not (eq char-after ?\})))
-			      0
-			    ;; Now it is a hash reference
-			    (+ cperl-indent-level cperl-close-paren-offset))
-			  ;; Labels do not take :: ...
-			  (if (looking-at "\\(\\w\\|_\\)+[ \t]*:")
-			      (if (> (current-indentation) cperl-min-label-indent)
-				  (- (current-indentation) cperl-label-offset)
-				;; Do not move `parse-data', this should
-				;; be quick anyway (this comment comes
-				;; from different location):
-				(cperl-calculate-indent))
-			    (current-column))
-			  (if (eq char-after ?\{)
-			      cperl-continued-brace-offset 0)))
-		   ;; This line starts a new statement.
-		   ;; Position following last unclosed open.
-		   (goto-char containing-sexp)
-		   ;; Is line first statement after an open-brace?
-		   (or
-		    ;; If no, find that first statement and indent like
-		    ;; it.  If the first statement begins with label, do
-		    ;; not believe when the indentation of the label is too
-		    ;; small.
-		    (save-excursion
-		      (forward-char 1)
-		      (setq old-indent (current-indentation))
-		      (let ((colon-line-end 0))
-			(while
-			    (progn (skip-chars-forward " \t\n")
-				   (and (looking-at "#\\|[a-zA-Z0-9_$]*:[^:]\\|=[a-zA-Z]")
-					(not (looking-at "$:")))) ; perl6: don't misinterpret $:foo as label; todo: correct in P5? Else use-v6'ify!
-			  ;; Skip over comments and labels following openbrace.
-			  (cond ((= (following-char) ?\#)
-				 (forward-line 1))
-				((= (following-char) ?\=)
-				 (goto-char
-				  (or (next-single-property-change (point) 'in-pod)
-				      (point-max)))) ; do not loop if no syntaxification
-				;; label:
-				(t
-				 (save-excursion (end-of-line)
-						 (setq colon-line-end (point)))
-				 (search-forward ":"))))
-			;; The first following code counts
-			;; if it is before the line we want to indent.
-			(and (< (point) indent-point)
-			     (if (> colon-line-end (point)) ; After label
-				 (if (> (current-indentation)
-					cperl-min-label-indent)
-				     (- (current-indentation) cperl-label-offset)
-				   ;; Do not believe: `max' is involved
-				   (+ old-indent cperl-indent-level))
-			       (current-column)))))
-		    ;; If no previous statement,
-		    ;; indent it relative to line brace is on.
-		    ;; For open brace in column zero, don't let statement
-		    ;; start there too.  If cperl-indent-level is zero,
-		    ;; use cperl-brace-offset + cperl-continued-statement-offset instead.
-		    ;; For open-braces not the first thing in a line,
-		    ;; add in cperl-brace-imaginary-offset.
+		  (setq pre-indent-point (point)))))
+	  (goto-char pre-indent-point)	; Orig line skipping preceeding pod/etc
+	  (let* ((case-fold-search nil)
+		 (s-s (cperl-get-state (car parse-data) (nth 1 parse-data)))
+		 (start (or (nth 2 parse-data) ; last complete sexp terminated
+			    (nth 0 s-s))) ; Good place to start parsing
+		 (state (nth 1 s-s))
+		 (containing-sexp (car (cdr state)))
+		 old-indent)
+	    (if (and
+		 ;;containing-sexp		;; We are buggy at toplevel :-(
+		 parse-data)
+		(progn
+		  (setcar parse-data pre-indent-point)
+		  (setcar (cdr parse-data) state)
+		  (or (nth 2 parse-data)
+		      (setcar (cddr parse-data) start))
+		  ;; Before this point: end of statement
+		  (setq old-indent (nth 3 parse-data))))
+	    (cond ((get-text-property (point) 'indentable)
+		   ;; indent to "after" the surrounding open
+		   ;; (same offset as `cperl-beautify-regexp-piece'),
+		   ;; skip blanks if we do not close the expression.
+		   (setq delim		; We do not close the expression
+			 (get-text-property
+			  (cperl-1+ char-after-pos) 'indentable)
+			 p (1+ (cperl-beginning-of-property
+				(point) 'indentable))
+			 is-block	; misused for: preceeding line in REx
+			 (save-excursion ; Find preceeding line
+			   (cperl-backward-to-noncomment p)
+			   (beginning-of-line)
+			   (if (<= (point) p)
+			       (progn	; get indent from the first line
+				 (goto-char p)
+				 (skip-chars-forward " \t")
+				 (if (memq (char-after (point))
+					   (append "#\n" nil))
+				     nil ; Can't use intentation of this line...
+				   (point)))
+			     (skip-chars-forward " \t")
+			     (point)))
+			 prop (parse-partial-sexp p char-after-pos))
+		   (cond ((not delim)	; End the REx, ignore is-block
+			  (vector 'indentable 'terminator p is-block))
+			 (is-block	; Indent w.r.t. preceeding line
+			  (vector 'indentable 'cont-line char-after-pos
+				  is-block char-after p))
+			 (t		; No preceeding line...
+			  (vector 'indentable 'first-line p))))
+		  ((get-text-property char-after-pos 'REx-part2)
+		   (vector 'REx-part2 (point)))
+		  ((nth 3 state)
+		   [comment])
+		  ((nth 4 state)
+		   [string])
+		  ;; XXXX Do we need to special-case this?
+		  ((null containing-sexp)
+		   ;; Line is at top level.  May be data or function definition,
+		   ;; or may be function argument declaration.
+		   ;; Indent like the previous top level line
+		   ;; unless that ends in a closeparen without semicolon,
+		   ;; in which case this line is the first argument decl.
+		   (skip-chars-forward " \t")
+		   (cperl-backward-to-noncomment (or old-indent (point-min)))
+		   (setq state
+			 (or (bobp)
+			     (eq (point) old-indent) ; old-indent was at comment
+			     (eq (preceding-char) ?\;)
+			     ;;  Had ?\) too
+			     (and (eq (preceding-char) ?\})
+				  (cperl-after-block-and-statement-beg
+				   (point-min))) ; Was start - too close
+			     (memq char-after (append ")]}" nil))
+			     (and (eq (preceding-char) ?\:) ; label
+				  (progn
+				    (forward-sexp -1)
+				    (skip-chars-backward " \t")
+				    (looking-at "[ \t]*[a-zA-Z_][a-zA-Z_0-9]*[ \t]*:")))
+			     (get-text-property (point) 'first-format-line)))
+		   
+		   ;; Look at previous line that's at column 0
+		   ;; to determine whether we are in top-level decls
+		   ;; or function's arg decls.  Set basic-indent accordingly.
+		   ;; Now add a little if this is a continuation line.
+		   (and state
+			parse-data
+			(not (eq char-after ?\C-j))
+			(setcdr (cddr parse-data)
+				(list pre-indent-point)))
+		   (vector 'toplevel start char-after state (nth 2 s-s)))
+		  ((not
+		    (or (setq is-block
+			      (and (setq delim (= (char-after containing-sexp) ?{))
+				   (save-excursion ; Is it a hash?
+				     (goto-char containing-sexp)
+				     (cperl-block-p))))
+			cperl-indent-parens-as-block))
+		   ;; group is an expression, not a block:
+		   ;; indent to just after the surrounding open parens,
+		   ;; skip blanks if we do not close the expression.
+		   (goto-char (1+ containing-sexp))
+		   (or (memq char-after
+			     (append (if delim "}" ")]}") nil))
+		       (looking-at "[ \t]*\\(#\\|$\\)")
+		       (skip-chars-forward " \t"))
+		   (setq old-indent (point)) ; delim=is-brace
+		   (vector 'in-parens char-after (point) delim containing-sexp))
+		  (t
+		   ;; Statement level.  Is it a continuation or a new statement?
+		   ;; Find previous non-comment character.
+		   (goto-char pre-indent-point) ; Skip one level of POD/etc
+		   (cperl-backward-to-noncomment containing-sexp)
+		   ;; Back up over label lines, since they don't
+		   ;; affect whether our line is a continuation.
+		   ;; (Had \, too)
+		   (while;;(or (eq (preceding-char) ?\,)
+		       (and (eq (preceding-char) ?:)
+			    (or;;(eq (char-after (- (point) 2)) ?\') ; ????
+			     (memq (char-syntax (char-after (- (point) 2)))
+				   '(?w ?_))))
+		     ;;)
+		     ;; This is always FALSE?
+		     (if (eq (preceding-char) ?\,)
+			 ;; Will go to beginning of line, essentially.
+			 ;; Will ignore embedded sexpr XXXX.
+			 (cperl-backward-to-start-of-continued-exp containing-sexp))
+		     (beginning-of-line)
+		     (cperl-backward-to-noncomment containing-sexp))
+		   ;; Now we get non-label preceeding the indent point
+		   (if (not (or (eq (1- (point)) containing-sexp)
+				(memq (preceding-char)
+				      (append (if is-block " ;{" " ,;{") '(nil)))
+				(and (eq (preceding-char) ?\})
+				     (cperl-after-block-and-statement-beg
+				      containing-sexp))
+				(get-text-property (point) 'first-format-line)))
+		       ;; This line is continuation of preceding line's statement;
+		       ;; indent  `cperl-continued-statement-offset'  more than the
+		       ;; previous line of the statement.
+		       ;;
+		       ;; There might be a label on this line, just
+		       ;; consider it bad style and ignore it.
+		       (progn
+			 (cperl-backward-to-start-of-continued-exp containing-sexp)
+			 (vector 'continuation (point) char-after is-block delim))
+		     ;; This line starts a new statement.
+		     ;; Position following last unclosed open brace
+		     (goto-char containing-sexp)
+		     ;; Is line first statement after an open-brace?
+		     (or
+		      ;; If no, find that first statement and indent like
+		      ;; it.  If the first statement begins with label, do
+		      ;; not believe when the indentation of the label is too
+		      ;; small.
+		      (save-excursion
+			(forward-char 1)
+			(let ((colon-line-end 0))
+			  (while
+			      (progn (skip-chars-forward " \t\n")
+				     (looking-at "#\\|[a-zA-Z0-9_$]*:[^:]\\|=[a-zA-Z]"))
+			    ;; Skip over comments and labels following openbrace.
+			    (cond ((= (following-char) ?\#)
+				   (forward-line 1))
+				  ((= (following-char) ?\=)
+				   (goto-char
+				    (or (next-single-property-change (point) 'in-pod)
+					(point-max)))) ; do not loop if no syntaxification
+				  ;; label:
+				  (t
+				   (save-excursion (end-of-line)
+						   (setq colon-line-end (point)))
+				   (search-forward ":"))))
+			  ;; We are at beginning of code (NOT label or comment)
+			  ;; First, the following code counts
+			  ;; if it is before the line we want to indent.
+			  (and (< (point) indent-point)
+			       (vector 'have-prev-sibling (point) colon-line-end
+				       containing-sexp))))
+		      (progn
+			;; If no previous statement,
+			;; indent it relative to line brace is on.
 
-		    ;; If first thing on a line:  ?????
-		    (+ (if (and (bolp) (zerop cperl-indent-level))
-			   (+ cperl-brace-offset cperl-continued-statement-offset)
-			 cperl-indent-level)
-		       (if (or is-block
-			       (not delim)
-			       (not (eq char-after ?\})))
-			   0
-			 ;; Now it is a hash reference
-			 (+ cperl-indent-level cperl-close-paren-offset))
-		       ;; Move back over whitespace before the openbrace.
-		       ;; If openbrace is not first nonwhite thing on the line,
-		       ;; add the cperl-brace-imaginary-offset.
-		       (progn (skip-chars-backward " \t")
-			      (if (bolp) 0 cperl-brace-imaginary-offset))
-		       ;; If the openbrace is preceded by a parenthesized exp,
-		       ;; move to the beginning of that;
-		       (progn		; possibly a different line
-			 (or cperl-indent-wrt-brace
-			     (cperl-backward-to-noncomment (point-min)))
-			 (if (eq (preceding-char) ?\))
-			     (progn
-			       (forward-sexp -1)
-			       (cperl-backward-to-noncomment (point-min))))
-			 ;; In the case it starts a subroutine, indent with
-			 ;; respect to `sub', not with respect to the
-			 ;; first thing on the line, say in the case of
-			 ;; anonymous sub in a hash.
-			 ;;
-			 ;;(skip-chars-backward " \t")
-			 (if (and
-			      (or
-			       (and (get-text-property (point) 'attrib-group)
-				    (goto-char
-				     (cperl-beginning-of-property
-				      (point) 'attrib-group)))
-			       (and (eq (preceding-char) ?b)
-				    (progn
-				      (forward-sexp -1)
-				      (looking-at "\\(coro\\|sub\\|method\\|submethod\\)\\>")))) ; perl6
-			      (setq old-indent
-				    (nth 1
-					 (parse-partial-sexp
-					  (save-excursion (beginning-of-line) (point))
-					  (point)))))
-			     (progn (goto-char (1+ old-indent))
-				    (skip-chars-forward " \t")
-				    (current-column))
-			   ;; Get initial indentation of the line we are on.
-			   ;; If line starts with label, calculate label indentation
-			   (if (save-excursion
-				 (beginning-of-line)
-				 (looking-at "[ \t]*[a-zA-Z_][a-zA-Z_0-9]*:[^:]"))
-			       (if (> (current-indentation) cperl-min-label-indent)
-				   (- (current-indentation) cperl-label-offset)
-				 ;; Do not move `parse-data', this should
-				 ;; be quick anyway:
-				 (cperl-calculate-indent))
-			     (current-indentation))))))))))))))
+			;; For open-braces not the first thing in a line,
+			;; add in cperl-brace-imaginary-offset.
+
+			;; If first thing on a line:  ?????
+			;; Move back over whitespace before the openbrace.
+			(setq		; brace first thing on a line
+			 old-indent (progn (skip-chars-backward " \t") (bolp)))
+			;; Should we indent w.r.t. earlier than start?
+			;; Move to start of control group, possibly on a different line
+			(or cperl-indent-wrt-brace
+			    (cperl-backward-to-noncomment (point-min)))
+			;; If the openbrace is preceded by a parenthesized exp,
+			;; move to the beginning of that;
+			(if (eq (preceding-char) ?\))
+			    (progn
+			      (forward-sexp -1)
+			      (cperl-backward-to-noncomment (point-min))))
+			;; In the case it starts a subroutine, indent with
+			;; respect to `sub', not with respect to the
+			;; first thing on the line, say in the case of
+			;; anonymous sub in a hash.
+			(if (and;; Is it a sub in group starting on this line?
+			     (cond ((get-text-property (point) 'attrib-group)
+				    (goto-char (cperl-beginning-of-property
+						(point) 'attrib-group)))
+				   ((eq (preceding-char) ?b)
+				    (forward-sexp -1)
+				    (looking-at "sub\\>")))
+			     (setq p (nth 1 ; start of innermost containing list
+					  (parse-partial-sexp
+					   (save-excursion (beginning-of-line)
+							   (point))
+					   (point)))))
+			    (progn
+			      (goto-char (1+ p)) ; enclosing block on the same line
+			      (skip-chars-forward " \t")
+			      (vector 'code-start-in-block containing-sexp char-after
+				      (and delim (not is-block)) ; is a HASH
+				      old-indent ; brace first thing on a line
+				      t (point) ; have something before...
+				      )
+			      ;;(current-column)
+			      )
+			  ;; Get initial indentation of the line we are on.
+			  ;; If line starts with label, calculate label indentation
+			  (vector 'code-start-in-block containing-sexp char-after
+				  (and delim (not is-block)) ; is a HASH
+				  old-indent ; brace first thing on a line
+				  nil (point) ; nothing interesting before
+				  ))))))))))))))
+
+(defvar cperl-indent-rules-alist
+  '((pod nil)				; via `syntax-type' property
+    (here-doc nil)			; via `syntax-type' property
+    (here-doc-delim nil)		; via `syntax-type' property
+    (format nil)			; via `syntax-type' property
+    (in-pod nil)			; via `in-pod' property
+    (comment-special:at-beginning-of-line nil)
+    (string t)
+    (comment nil))
+  "Alist of indentation rules for CPerl mode.
+The values mean:
+  nil: do not indent;
+  number: add this amount of indentation.
+
+Not finished.")
+
+(defun cperl-calculate-indent (&optional parse-data) ; was parse-start
+  "Return appropriate indentation for current line as Perl code.
+In usual case returns an integer: the column to indent to.
+Returns nil if line starts inside a string, t if in a comment.
+
+Will not correct the indentation for labels, but will correct it for braces
+and closing parentheses and brackets."
+  ;; This code is still a broken architecture: in some cases we need to
+  ;; compensate for some modifications which `cperl-indent-line' will add later
+  (save-excursion
+    (let ((i (cperl-sniff-for-indent parse-data)) what p)
+      (cond
+       ;;((or (null i) (eq i t) (numberp i))
+       ;;  i)
+       ((vectorp i)
+	(setq what (assoc (elt i 0) cperl-indent-rules-alist))
+	(cond
+	 (what (cadr what))		; Load from table
+	 ;;
+	 ;; Indenters for regular expressions with //x and qw()
+	 ;;
+	 ((eq 'REx-part2 (elt i 0)) ;; [self start] start of /REP in s//REP/x
+	  (goto-char (elt i 1))
+	  (condition-case nil	; Use indentation of the 1st part
+	      (forward-sexp -1))
+	  (current-column))
+	 ((eq 'indentable (elt i 0))	; Indenter for REGEXP qw() etc
+	  (cond		       ;;; [indentable terminator start-pos is-block]
+	   ((eq 'terminator (elt i 1)) ; Lone terminator of "indentable string"
+	    (goto-char (elt i 2))	; After opening parens
+	    (1- (current-column)))
+	   ((eq 'first-line (elt i 1)); [indentable first-line start-pos]
+	    (goto-char (elt i 2))
+	    (+ (or cperl-regexp-indent-step cperl-indent-level)
+	       -1
+	       (current-column)))
+	   ((eq 'cont-line (elt i 1)); [indentable cont-line pos prev-pos first-char start-pos]
+	    ;; Indent as the level after closing parens
+	    (goto-char (elt i 2))	; indent line
+	    (skip-chars-forward " \t)") ; Skip closing parens
+	    (setq p (point))
+	    (goto-char (elt i 3))	; previous line
+	    (skip-chars-forward " \t)") ; Skip closing parens
+	    ;; Number of parens in between:
+	    (setq p (nth 0 (parse-partial-sexp (point) p))
+		  what (elt i 4))	; First char on current line
+	    (goto-char (elt i 3))	; previous line
+	    (+ (* p (or cperl-regexp-indent-step cperl-indent-level))
+	       (cond ((eq what ?\) )
+		      (- cperl-close-paren-offset)) ; compensate
+		     ((eq what ?\| )
+		      (- (or cperl-regexp-indent-step cperl-indent-level)))
+		     (t 0))
+	       (if (eq (following-char) ?\| )
+		   (or cperl-regexp-indent-step cperl-indent-level)
+		 0)
+	       (current-column)))
+	   (t
+	    (error "Unrecognized value of indent: " i))))
+	 ;;
+	 ;; Indenter for stuff at toplevel
+	 ;;
+	 ((eq 'toplevel (elt i 0)) ;; [toplevel start char-after state immed-after-block]
+	  (+ (save-excursion		; To beg-of-defun, or end of last sexp
+	       (goto-char (elt i 1))	; start = Good place to start parsing
+	       (- (current-indentation) ; 
+		  (if (elt i 4) cperl-indent-level 0)))	; immed-after-block
+	     (if (eq (elt i 2) ?{) cperl-continued-brace-offset 0) ; char-after
+	     ;; Look at previous line that's at column 0
+	     ;; to determine whether we are in top-level decls
+	     ;; or function's arg decls.  Set basic-indent accordingly.
+	     ;; Now add a little if this is a continuation line.
+	     (if (elt i 3)		; state (XXX What is the semantic???)
+		 0
+	       cperl-continued-statement-offset)))
+	 ;;
+	 ;; Indenter for stuff in "parentheses" (or brackets, braces-as-hash)
+	 ;;
+	 ((eq 'in-parens (elt i 0))
+	  ;; in-parens char-after old-indent-point is-brace containing-sexp
+
+	  ;; group is an expression, not a block:
+	  ;; indent to just after the surrounding open parens,
+	  ;; skip blanks if we do not close the expression.
+	  (+ (progn
+	       (goto-char (elt i 2))		; old-indent-point
+	       (current-column))
+	     (if (and (elt i 3)		; is-brace
+		      (eq (elt i 1) ?\})) ; char-after
+		 ;; Correct indentation of trailing ?\}
+		 (+ cperl-indent-level cperl-close-paren-offset)
+	       0)))
+	 ;;
+	 ;; Indenter for continuation lines
+	 ;;
+	 ((eq 'continuation (elt i 0))
+	  ;; [continuation statement-start char-after is-block is-brace]
+	  (goto-char (elt i 1))		; statement-start
+	  (+ (if (memq (elt i 2) (append "}])" nil)) ; char-after
+		 0			; Closing parenth
+	       cperl-continued-statement-offset)
+	     (if (or (elt i 3)		; is-block
+		     (not (elt i 4))		; is-brace
+		     (not (eq (elt i 2) ?\}))) ; char-after
+		 0
+	       ;; Now it is a hash reference
+	       (+ cperl-indent-level cperl-close-paren-offset))
+	     ;; Labels do not take :: ...
+	     (if (looking-at "\\(\\w\\|_\\)+[ \t]*:")
+		 (if (> (current-indentation) cperl-min-label-indent)
+		     (- (current-indentation) cperl-label-offset)
+		   ;; Do not move `parse-data', this should
+		   ;; be quick anyway (this comment comes
+		   ;; from different location):
+		   (cperl-calculate-indent))
+	       (current-column))
+	     (if (eq (elt i 2) ?\{)	; char-after
+		 cperl-continued-brace-offset 0)))
+	 ;;
+	 ;; Indenter for lines in a block which are not leading lines
+	 ;;
+	 ((eq 'have-prev-sibling (elt i 0))
+	  ;; [have-prev-sibling sibling-beg colon-line-end block-start]
+	  (goto-char (elt i 1))
+	  (if (> (elt i 2) (point)) ; colon-line-end; After-label, same line
+	      (if (> (current-indentation)
+		     cperl-min-label-indent)
+		  (- (current-indentation) cperl-label-offset)
+		;; Do not believe: `max' was involved in calculation of indent
+		(+ cperl-indent-level
+		   (save-excursion
+		     (goto-char (elt i 3)) ; block-start
+		     (current-indentation))))
+	    (current-column)))
+	 ;;
+	 ;; Indenter for the first line in a block
+	 ;;
+	 ((eq 'code-start-in-block (elt i 0))
+	  ;;[code-start-in-block before-brace char-after
+	  ;; is-a-HASH-ref brace-is-first-thing-on-a-line
+	  ;; group-starts-before-start-of-sub start-of-control-group]
+	  (goto-char (elt i 1))
+	  ;; For open brace in column zero, don't let statement
+	  ;; start there too.  If cperl-indent-level=0,
+	  ;; use cperl-brace-offset + cperl-continued-statement-offset instead.
+	  (+ (if (and (bolp) (zerop cperl-indent-level))
+		 (+ cperl-brace-offset cperl-continued-statement-offset)
+	       cperl-indent-level)
+	     (if (and (elt i 3)	; is-a-HASH-ref
+		      (eq (elt i 2) ?\})) ; char-after: End of a hash reference
+		 (+ cperl-indent-level cperl-close-paren-offset)
+	       0)
+	     ;; Unless openbrace is the first nonwhite thing on the line,
+	     ;; add the cperl-brace-imaginary-offset.
+	     (if (elt i 4) 0		; brace-is-first-thing-on-a-line
+	       cperl-brace-imaginary-offset)
+	     (progn
+	       (goto-char (elt i 6))	; start-of-control-group
+	       (if (elt i 5)		; group-starts-before-start-of-sub
+		   (current-column)
+		 ;; Get initial indentation of the line we are on.
+		 ;; If line starts with label, calculate label indentation
+		 (if (save-excursion
+		       (beginning-of-line)
+		       (looking-at "[ \t]*[a-zA-Z_][a-zA-Z_0-9]*:[^:]"))
+		     (if (> (current-indentation) cperl-min-label-indent)
+			 (- (current-indentation) cperl-label-offset)
+		       ;; Do not move `parse-data', this should
+		       ;; be quick anyway:
+		       (cperl-calculate-indent))
+		   (current-indentation))))))
+	 (t
+	  (error "Unrecognized value of indent: " i))))
+       (t
+	(error (format "Got strange value of indent: " i)))))))
 
 (defvar cperl-indent-alist
   '((string nil)
@@ -7958,8 +8075,14 @@ Style of printout regulated by the variable `cperl-ps-print-face-properties'."
     cperl-continued-statement-offset))
 
 (defconst cperl-style-examples
-"
-### CPerl	(=GNU - extra-newline-before-brace + merge-trailing-else)
+"##### Numbers etc are: cperl-indent-level cperl-brace-offset
+##### cperl-continued-brace-offset cperl-label-offset
+##### cperl-continued-statement-offset
+##### cperl-merge-trailing-else cperl-extra-newline-before-brace
+
+########### (Do not forget cperl-extra-newline-before-brace-multiline)
+
+### CPerl	(=GNU - extra-newline-before-brace + merge-trailing-else) 2/0/0/-2/2/t/nil
 if (foo) {
   bar
     baz;
@@ -7971,7 +8094,7 @@ if (foo) {
   stop;
 }
 
-### PerlStyle	(=CPerl with 4 as indent)
+### PerlStyle	(=CPerl with 4 as indent)		4/0/0/-4/4/t/nil
 if (foo) {
     bar
 	baz;
@@ -7983,7 +8106,7 @@ if (foo) {
     stop;
 }
 
-### GNU
+### GNU							2/0/0/-2/2/nil/t
 if (foo)
   {
     bar
@@ -7998,7 +8121,7 @@ else
     stop;
   }
 
-### C++		(=PerlStyle with braces aligned with control words)
+### C++		(=PerlStyle with braces aligned with control words) 4/0/-4/-4/4/nil/t
 if (foo)
 {
     bar
@@ -8013,8 +8136,8 @@ else
     stop;
 }
 
-### BSD		(=C++, but will not change preexisting
-###		 extra-newline-before-brace and merge-trailing-else)
+### BSD		(=C++, but will not change preexisting merge-trailing-else
+###		 and extra-newline-before-brace )		4/0/-4/-4/4
 if (foo)
 {
     bar
@@ -8030,7 +8153,7 @@ else
 }
 
 ### K&R		(=C++ with indent 5 - merge-trailing-else, but will not
-###		 change preexisting extra-newline-before-brace)
+###		 change preexisting extra-newline-before-brace)	5/0/-5/-5/5/nil
 if (foo)
 {
      bar
@@ -8046,7 +8169,7 @@ else
 }
 
 ### Whitesmith	(=PerlStyle, but will not change preexisting
-###		 extra-newline-before-brace and merge-trailing-else)
+###		 extra-newline-before-brace and merge-trailing-else) 4/0/0/-4/4
 if (foo)
     {
 	bar
@@ -8083,6 +8206,7 @@ else
      (cperl-extra-newline-before-brace .  nil)
      (cperl-extra-newline-before-brace-multiline .  nil)
      (cperl-merge-trailing-else	       .  t))
+
     ("Pugs"
      (indent-tabs-mode                 .  nil)
      (cperl-indent-level               .  4)
@@ -8091,6 +8215,7 @@ else
      (cperl-label-offset               . -4)
      (cperl-extra-newline-before-brace-multiline .  nil)
      (cperl-merge-trailing-else	       .  t))
+
     ("GNU"
      (cperl-indent-level               .  2)
      (cperl-brace-offset               .  0)
@@ -10622,7 +10747,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "Revision: 5.21-Pugs/Github "))
+  (let ((v  "Revision: 5.22-Pugs/Github "))
     (string-match ":\\s *\\([-0-9a-z.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
