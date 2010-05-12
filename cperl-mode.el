@@ -10804,7 +10804,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 
 (defvar cperl-version
   (let ((v  "Revision: 6.2-Pugs/Github "))
-    (string-match ":\\s *\\([-0-9a-z.]+\\)" v)
+    (string-match ":\\s *\\([-/0-9a-z.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
 
