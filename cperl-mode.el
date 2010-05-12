@@ -1963,7 +1963,7 @@ will be reconstructed basing on these two variables."
    (and
     (boundp 'interpreter-mode-alist)
     (assoc "miniperl" interpreter-mode-alist)
-    (assoc "\\.\\([pP][Llm6]\\|al\\)$" auto-mode-alist)))
+    (assoc "\\.\\([pP][LlmM6]6?\\|al\\)$" auto-mode-alist)))
   "*Whether to install us into `interpreter-' and `extension' mode lists."
   :type 'boolean
   :group 'cperl)
@@ -2088,7 +2088,7 @@ Older version of this page was called `perl5', newer `perl'."
   :type 'boolean
   :group 'cperl-speed)
 
-(defcustom cperl-scan-files-regexp "\\.\\([pP][Llm6]\\|xs\\)$"
+(defcustom cperl-scan-files-regexp "\\.\\([pP][LlmM6]6?\\|xs\\)$"
   "*Regexp to match files to scan when generating TAGS."
   :type 'regexp
   :group 'cperl)
@@ -2742,7 +2742,7 @@ versions of Emacs."
 
 (and cperl-clobber-mode-lists
      (setq auto-mode-alist
-      (append '(("\\.\\([pP][Llm6]\\|al\\)$" . perl-mode))  auto-mode-alist ))
+      (append '(("\\.\\([pP][LlmM6]6?\\|al\\)$" . perl-mode))  auto-mode-alist ))
      (and (boundp 'interpreter-mode-alist)
 	  (setq interpreter-mode-alist (append interpreter-mode-alist
 					       '(("miniperl" . perl-mode))))))
@@ -8609,7 +8609,7 @@ in subdirectories too."
      ((eq all 'recursive)
       ;;(error "Not implemented: recursive")
       (setq args (append (list "-e"
-			       "sub wanted {push @ARGV, $File::Find::name if /\\.[pP][Llm6]$/}
+			       "sub wanted {push @ARGV, $File::Find::name if /\\.[pP][LlmM6]6?$/}
 				use File::Find;
 				find(\\&wanted, '.');
 				exec @ARGV;"
@@ -10813,7 +10813,7 @@ do extra unwind via `cperl-unwind-to-safe'."
       (funcall f 'pod-spell 'cperl-pod-spell)))		; Avoid "not defined"
 
 ;; XEmacs additions
-;;;###autoload(add-to-list 'auto-mode-alist '("\\.\\([pP][LlMm]\\|al\\)\\'" . perl-mode))
+;;;###autoload(add-to-list 'auto-mode-alist '("\\.\\([pP][LlMm6]6?\\|al\\)\\'" . perl-mode))
 ;;;###autoload(add-to-list 'interpreter-mode-alist '("perl" . perl-mode))
 
 (provide 'cperl-mode)
