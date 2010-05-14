@@ -3101,9 +3101,22 @@ the last)."
    "\\)?"				; END n+6=proto-group
    ))
 
+;;; Tired of editing this in 8 places every time I remember that there
+;;; is another method-defining keyword
+(defvar cperl-sub-keywords
+  '("\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)"))
+
+(defvar cperl-sub-regexp (regexp-opt cperl-sub-keywords))
+
+(defun cperl-char-ends-sub-keyword-p (char)
+  "Return T if CHAR is the last character of a perl sub keyword."
+  (loop for keyword in cperl-sub-keywords
+        when (eq char (aref keyword (1- (length keyword))))
+        return t))
+
 ;;; Details of groups in this are used in `cperl-imenu--create-perl-index'
 ;;;  and `cperl-outline-level'.
-;;;; Was: 2=sub|package; now 2=package-group, 5=package-name 11=sub-name (+3)
+;;;; Was: 2=sub|package; now 2=package-group, 5=package-name 8=sub-name (+3)
 (defvar cperl-imenu--function-name-regexp-perl
   (concat
    "^\\("				; 1 = all
@@ -3112,7 +3125,8 @@ the last)."
 	    cperl-white-and-comment-rex ; 4 = pre-package-name
 	       "\\([a-zA-Z_0-9:']+\\)\\)?\\)" ; 5 = package-name
        "\\|"
-          "[ \t]*\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)" ; perl6
+          "[ \t]*"
+          cperl-sub-regexp
 	  (cperl-after-sub-regexp 'named nil) ; 8=name 11=proto 14=attr-start
 	  cperl-maybe-white-and-comment-rex	; 15=pre-block
    "\\|"
@@ -3447,7 +3461,8 @@ or as help on variables `cperl-tips', `cperl-problems',
 ;;;	  (cperl-after-sub-regexp 'named nil) ; 11=name 14=proto 17=attr-start
 ;;;	  cperl-maybe-white-and-comment-rex	; 16=pre-block
   (setq defun-prompt-regexp
-	(concat "[ \t]*\\(\\(?:sub\\|method\\)"
+	(concat "[ \t]*\\("
+                cperl-sub-regexp
 		(cperl-after-sub-regexp 'named 'attr-groups)
 		"\\|"			; per toke.c
 		"\\(BEGIN\\|UNITCHECK\\|CHECK\\|INIT\\|END\\|AUTOLOAD\\|DESTROY\\)"
@@ -4704,7 +4719,7 @@ Will not look before LIM."
 						(point) 'attrib-group)))
 				   ((eq (preceding-char) ?b)
 				    (forward-sexp -1)
-				    (looking-at "sub\\>")))
+				    (looking-at (concat cperl-sub-regexp "\\>"))))
 			     (setq p (nth 1 ; start of innermost containing list
 					  (parse-partial-sexp
 					   (save-excursion (beginning-of-line)
@@ -5486,7 +5501,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\([?/<]\\)"	; /blah/ or ?blah? or <file*glob>
 		"\\|"
 		;; 1+6+2+1+1=11 extra () before this
-		"\\<\\(?:sub\\|method\\)\\>"		;  sub with proto/attr
+		"\\<" cperl-sub-regexp "\\>" ;  sub with proto/attr
 		"\\("
 		   cperl-white-and-comment-rex
 		   "\\(::[a-zA-Z_:'0-9]*\\|[a-zA-Z_'][a-zA-Z_:'0-9]*\\)\\)?" ; name
@@ -6573,7 +6588,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
                       (and (eq (preceding-char) ?b)
                            (progn
                              (forward-sexp -1)
-                             (looking-at "\\(coro\\|sub\\|method\\|submethod\\)[ \t\n\f#]"))))))) ; perl6
+                             (looking-at (concat cperl-sub-regexp "[ \t\n\f#]")))))))) ; perl6
          (if cperl-use-v6
              (progn ; perl6: "if/elsif/unless/while/until/given/when/for/loop" without parens; just look at beginning of line
                (beginning-of-line)
@@ -6613,10 +6628,10 @@ statement would start; thus the block in ${func()} does not count."
 			;; sub f {}
 			(progn
 			  (cperl-backward-to-noncomment lim)
-			  (and (eq (preceding-char) ?b)
+			  (and (cperl-char-ends-sub-keyword-p (preceding-char))
 			       (progn
 				 (forward-sexp -1)
-				 (looking-at "\\(coro\\|sub\\|method\\|submethod\\)[ \t\n\f#]")))))) ; perl6
+				 (looking-at (concat cperl-sub-regexp "[ \t\n\f#]"))))))) ; perl6
 		   (save-excursion ; perl6: returns Type {} / is rw {} / is cached {} / ...
 		     (forward-sexp -2)
 		     (looking-at "\\(returns\\|of\\|is\\|does[ \t]\\(rw\\|readonly\\|ref\\|copy\\|context\\|cached\\|signature\\|parsed\\|reparsed\\|inline\\|tighter\\|looser\\|equiv\\|export\\|assoc\\|extended\\|deep\\|also\\)\\|will[ \t]do\\)\\>")))
@@ -7485,6 +7500,8 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
 	      (mapconcat
 	       'identity
+           (append
+                cperl-sub-keywords
            '("if" "until" "while" "elsif" "else" "unless" "for"
              "given" "when" "default" "break"
              "foreach" "continue" "exit" "die" "last" "loop" "goto" "next"
@@ -7492,14 +7509,14 @@ indentation and initial hashes.  Behaves usually outside of comment."
              "require" "package" "eval" "my" "BEGIN" "END" "CHECK"
              "INIT" "START" "FIRST" "ENTER" "LEAVE" "KEEP"
              "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL"
-             "given" "when" "default" "has" "returns" "of" "is" "does"
-             "\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)?"
+             "given" "when" "default" "has" "returns" "of" "is" "does"             
              "class" "module" "role" "try")
 		 "foreach" "continue" "exit" "die" "last" "goto" "next"
-		 "redo" "return" "local" "exec" "sub" "method" "do" "dump" 
+		 "redo" "return" "local" "exec" 
+                 "do" "dump" 
                  "use" "our"
 		 "require" "package" "eval" "my" "state" 
-         "BEGIN" "END" "CHECK" "INIT" "UNITCHECK")
+         "BEGIN" "END" "CHECK" "INIT" "UNITCHECK"))
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
 					; In what follows we use `type' style
@@ -7628,7 +7645,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    ;; This highlights declarations and definitions differenty.
 	    ;; We do not try to highlight in the case of attributes:
 	    ;; it is already done by `cperl-find-pods-heres'
-	    (list (concat "\\<\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)" ; perl6: multi|proto sub methods
+	    (list (concat "\\<" cperl-sub-regexp
 			  cperl-white-and-comment-rex ; whitespace/comments
 			  "\\([^ \n\t{;()]+\\)" ; 2=name (assume non-anonymous)
 			  "\\("
