@@ -3433,7 +3433,7 @@ or as help on variables `cperl-tips', `cperl-problems',
 ;;;	  (cperl-after-sub-regexp 'named nil) ; 11=name 14=proto 17=attr-start
 ;;;	  cperl-maybe-white-and-comment-rex	; 16=pre-block
   (setq defun-prompt-regexp
-	(concat "[ \t]*\\(sub"
+	(concat "[ \t]*\\(\\(?:sub\\|method\\)"
 		(cperl-after-sub-regexp 'named 'attr-groups)
 		"\\|"			; per toke.c
 		"\\(BEGIN\\|CHECK\\|INIT\\|END\\|AUTOLOAD\\|DESTROY\\)"
@@ -5472,7 +5472,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\([?/<]\\)"	; /blah/ or ?blah? or <file*glob>
 		"\\|"
 		;; 1+6+2+1+1=11 extra () before this
-		"\\<sub\\>"		;  sub with proto/attr
+		"\\<\\(?:sub\\|method\\)\\>"		;  sub with proto/attr
 		"\\("
 		   cperl-white-and-comment-rex
 		   "\\(::[a-zA-Z_:'0-9]*\\|[a-zA-Z_'][a-zA-Z_:'0-9]*\\)\\)?" ; name
@@ -5485,7 +5485,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\|"
 		;; 1+6+2+1+1+6+1=18 extra () before this (old pack'var syntax;
 		;; we do not support intervening comments...):
-		"\\(\\<sub[ \t\n\f]+\\|[&*$@%]\\)[a-zA-Z0-9_]*'"
+		"\\(\\<\\(?:sub\\|method\\)[ \t\n\f]+\\|[&*$@%]\\)[a-zA-Z0-9_]*'"
 		;; 1+6+2+1+1+6+1+1=19 extra () before this:
 		"\\|"
 		"__\\(END\\|DATA\\)__"	; __END__ or __DATA__
@@ -5686,7 +5686,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 						(progn
 						  (forward-sexp -2)
 						  (not
-						   (looking-at "\\(printf?\\|system\\|exec\\|sort\\)\\>")))
+						   (looking-at "\\(printf?\\|say\\|system\\|exec\\|sort\\)\\>")))
 						(error t)))))))
 				   (error nil))) ; func(<<EOF)
 			       (and (not (match-beginning 6)) ; Empty
@@ -5873,7 +5873,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 					      (not (memq (preceding-char)
 							 '(?$ ?@ ?& ?%)))
 					      (looking-at
-					       "\\(while\\|if\\|unless\\|when\\|until\\|and\\|or\\|not\\|xor\\|split\\|grep\\|map\\|print\\)\\>")))))
+					       "\\(while\\|if\\|unless\\|when\\|until\\|and\\|or\\|not\\|xor\\|split\\|grep\\|map\\|print\\|say\\)\\>")))))
 				    (and (eq (preceding-char) ?.)
 					 (eq (char-after (- (point) 2)) ?.))
 				    (bobp))
@@ -6725,7 +6725,7 @@ CHARS is a string that contains good characters to have before us (however,
 	   (forward-sexp -1)
 	   (not
 	    (looking-at
-	     "\\(map\\|grep\\|printf?\\|system\\|exec\\|tr\\|s\\)\\>")))))))
+	     "\\(map\\|grep\\|say\\|printf?\\|system\\|exec\\|tr\\|s\\)\\>")))))))
 
 
 (defvar innerloop-done nil)
@@ -7478,7 +7478,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
              "INIT" "START" "FIRST" "ENTER" "LEAVE" "KEEP"
              "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL"
              "given" "when" "default" "has" "returns" "of" "is" "does"
-             "\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?"
+             "\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)?"
              "class" "module" "role" "try")
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
@@ -7580,17 +7580,17 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	     (concat
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
 	      ;; "AUTOLOAD" "BEGIN" "CHECK" "DESTROY" "END" "INIT" "__END__" "async" "atomically" "chomp"
-	      ;; "chop" "class" "coro" "defined" "delete" "do" "each" "else" "elsif"
+	      ;; "chop" "class" "coro" "default" "defined" "delete" "do" "each" "else" "elsif"
 	      ;; "eval" "exists" "for" "foreach" "format" "gather" "grammar" "goto"
 	      ;; "grep" "has" "if" "keys" "kv" "last" "local" "loop" "map" "my" "next"
 	      ;; "no" "our" "pairs" "package" "pop" "pos" "pick" "print" "printf" "push"
-	      ;; "q" "qq" "qw" "qx" "redo" "rx" "reduce" "regex" "return" "role" "rule" "say" "scalar" "shift"
+	      ;; "q" "qq" "qw" "qx" "redo" "return" "rx" "reduce" "regex" "return" "role" "rule" "say" "scalar" "shift"
 	      ;; "sort" "splice" "split" "study" "state" "sum" "take" "taken" "type" "token" "sub" "tie" "tr"
 	      ;; "undef" "uniq" "unless" "unshift" "untie" "until" "uniq" "use"
 	      ;; "while" "y" "zip"
 	      "AUTOLOAD\\|BEGIN\\|CHECK\\|a\\(sync\\|tomically\\)\\|c\\(lass\\|ho\\(p\\|mp\\)\\|oro\\)\\|d\\(e\\(fined\\|lete\\)\\|"
 	      "o\\)\\|DESTROY\\|e\\(ach\\|val\\|xists\\|ls\\(e\\|if\\)\\)\\|"
-	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(ather\\|r\\(ep\\|ammar\\)\\|oto\\)\\|has\\|INIT\\|if\\|k\\(eys\\|v\\)\\|"
+	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(ather\\|iven\\|r\\(ep\\|ammar\\)\\|oto\\)\\|has\\|INIT\\|if\\|k\\(eys\\|v\\)\\|"
 	      "l\\(ast\\|o\\(cal\\|op\\)\\)\\|m\\(a\\(p\\|x\\)\\|in\\|odule\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
 	      "p\\(a\\(ckage\\|irs\\)\\|ick\\|rint\\(\\|f\\)\\|ush\\|o\\(p\\|s\\)\\)\\|"
 	      "q\\(\\|q\\|w\\|x\\|r\\)\\|rx\\|re\\(gex\\|turn\\|d\\(o\\|uce\\)\\)\\|r\\(o\\|u\\)le\\|s\\(ay\\|pli\\(ce\\|t\\)\\|"
@@ -7608,9 +7608,9 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    ;; This highlights declarations and definitions differenty.
 	    ;; We do not try to highlight in the case of attributes:
 	    ;; it is already done by `cperl-find-pods-heres'
-	    (list (concat "\\<\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?" ; perl6: multi|proto sub methods
+	    (list (concat "\\<\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)?" ; perl6: multi|proto sub methods
 			  cperl-white-and-comment-rex ; whitespace/comments
-			  "\\([^ \n\t{;()]+\\)" ; 5=name (assume non-anonymous)
+			  "\\([^ \n\t{;()]+\\)" ; 2=name (assume non-anonymous)
 			  "\\("
                           cperl-maybe-white-and-comment-rex ;whitespace/comments?
                           "([^()]*)\\)?" ; prototype
@@ -7618,7 +7618,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
                           "\\(returns[ \t]+.*\\)?" ; perl6: returns
                           cperl-maybe-white-and-comment-rex ; whitespace/comments?
                           "[{;]")
-		  5 (if cperl-font-lock-multiline
+		  2 (if cperl-font-lock-multiline
 			'(if (eq (char-after (cperl-1- (match-end 0))) ?\{ )
 			     'font-lock-function-name-face
 			   'font-lock-variable-name-face)
@@ -8599,7 +8599,7 @@ in subdirectories too."
 		;;       1=fullname  2=package?             3=name                       4=proto?             5=attrs? (VERY APPROX!)
 		"/\\<sub[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\(([^()]*)[ \t]*\\)?\\([ \t]*:[^#{;]*\\)?\\([{#]\\|$\\)/\\3/"
 		"-r"
-		"/\\<\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\)[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\([#;]\\|$\\)/\\2/"; perl6
+		"/\\<\\(?:package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\)[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\([#;]\\|$\\)/\\1/"; perl6
 		"-r"
 		"/\\<\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\)[ \\t]*;/\\1;/"))
 	res)
@@ -8812,7 +8812,7 @@ by CPerl."
 	      (progn
 		(insert (elt elt 3)
 			127
-			(if (string-match "^\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\) " (car elt)) ; perl6
+			(if (string-match "^\\(?:package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\) " (car elt)) ; perl6
 			    (substring (car elt) 8)
 			  (car elt) )
 			1
@@ -9206,6 +9206,7 @@ One may build such TAGS files from CPerl mode menu."
      "\\$."				; $|
      "<<[a-zA-Z_'\"`]"			; <<FOO, <<'FOO'
      "||"
+     "//"
      "&&"
      "[CBIXSLFZ]<\\(\\sw\\|\\s \\|\\s_\\|[\n]\\)*>" ; C<code like text>
      "-[a-zA-Z_0-9]+[ \t]*=>"		; -option => value
@@ -9717,6 +9718,7 @@ rewinddir(DIRHANDLE)
 rindex(STR,SUBSTR[,OFFSET])
 rmdir(FILENAME)
 s/PATTERN/REPLACEMENT/gieoxsm
+say [FILEHANDLE] [(LIST)]
 scalar(EXPR)
 seek(FILEHANDLE,POSITION,WHENCE)
 seekdir(DIRHANDLE,POS)
@@ -9786,6 +9788,7 @@ x= ...	Repetition assignment.
 y/SEARCHLIST/REPLACEMENTLIST/
 ... | ...	Bitwise or.
 ... || ...	Logical or.
+... // ...      Defined-or.
 ~ ...		Unary bitwise complement.
 #!	OS interpreter indicator.  If contains `perl', used for options, and -x.
 AUTOLOAD {...}	Shorthand for `sub AUTOLOAD {...}'.
