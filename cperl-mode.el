@@ -3436,7 +3436,7 @@ or as help on variables `cperl-tips', `cperl-problems',
 	(concat "[ \t]*\\(\\(?:sub\\|method\\)"
 		(cperl-after-sub-regexp 'named 'attr-groups)
 		"\\|"			; per toke.c
-		"\\(BEGIN\\|CHECK\\|INIT\\|END\\|AUTOLOAD\\|DESTROY\\)"
+		"\\(BEGIN\\|UNITCHECK\\|CHECK\\|INIT\\|END\\|AUTOLOAD\\|DESTROY\\)"
 		"\\)"
 		cperl-maybe-white-and-comment-rex))
   (make-local-variable 'comment-indent-function)
@@ -7614,7 +7614,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    ;; This highlights declarations and definitions differenty.
 	    ;; We do not try to highlight in the case of attributes:
 	    ;; it is already done by `cperl-find-pods-heres'
-	    (list (concat "\\<\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)?" ; perl6: multi|proto sub methods
+	    (list (concat "\\<\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)" ; perl6: multi|proto sub methods
 			  cperl-white-and-comment-rex ; whitespace/comments
 			  "\\([^ \n\t{;()]+\\)" ; 2=name (assume non-anonymous)
 			  "\\("
