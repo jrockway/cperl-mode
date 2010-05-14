@@ -6,9 +6,12 @@
 
 ;; Author: Ilya Zakharevich and Bob Olson
 ;; Maintainer: Ilya Zakharevich <ilyaz@cpan.org>
+;; Maintainer for mx-declare branch: Jonathan Rockway <jon@jrock.us>
+;; Maintainer for perl6-pugs branch: Steffen Schwigon <ss5@renormalist.net>
 ;; Keywords: languages, Perl
 
-;; This file is part of GNU Emacs.
+;; This particular file is not actually part of GNU Emacs.
+;; It is from http://github.com/jrockway/cperl-mode
 
 ;;; This code started from the following message of long time ago
 ;;; (IZ), but Bob does not maintain this mode any more:
@@ -55,6 +58,17 @@
 ;;; your .emacs file:
 
 ;; (autoload 'perl-mode "cperl-mode" "alternate mode for editing Perl programs" t)
+
+;; This version of the file contains support for the syntax added by
+;; the MooseX::Declare CPAN module, as well as Perl 5.10 keyword
+;; support.
+
+;; It additionally contains Perl6 adaptions from the Pugs project.
+
+;; The latest version is available from
+;; http://github.com/jrockway/cperl-mode
+;;
+;; (perhaps in the moosex-declare branch)
 
 ;; You can either fine-tune the bells and whistles of this mode or
 ;; bulk enable them by putting
