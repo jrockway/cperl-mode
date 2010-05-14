@@ -3098,12 +3098,12 @@ the last)."
 	    cperl-white-and-comment-rex ; 4 = pre-package-name
 	       "\\([a-zA-Z_0-9:']+\\)\\)?\\)" ; 5 = package-name
        "\\|"
-          "[ \t]*\\(\\(multi\\|proto\\)[ \t]*\\)?\\(coro\\|sub\\|method\\|submethod\\)?" ; perl6
-	  (cperl-after-sub-regexp 'named nil) ; 11=name 14=proto 17=attr-start
-	  cperl-maybe-white-and-comment-rex	; 18=pre-block
+          "[ \t]*\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)" ; perl6
+	  (cperl-after-sub-regexp 'named nil) ; 8=name 11=proto 14=attr-start
+	  cperl-maybe-white-and-comment-rex	; 15=pre-block
    "\\|"
-     "=head\\([1-4]\\)[ \t]+"		; 19=level
-     "\\([^\n]+\\)$"			; 20=text
+     "=head\\([1-4]\\)[ \t]+"		; 16=level
+     "\\([^\n]+\\)$"			; 17=text
    "\\)"))
 
 (defvar cperl-outline-regexp
@@ -6764,13 +6764,13 @@ conditional/loop constructs."
 			(if (eq (following-char) ?$ ) ; for my $var (list)
 			    (progn
 			      (forward-sexp -1)
-			      (if (looking-at "\\(my\\|local\\|our\\)\\>")
+			      (if (looking-at "\\(state\\|my\\|local\\|our\\)\\>")
 				  (forward-sexp -1))))
 			(if (looking-at
 			     (concat "\\(\\elsif\\|if\\|unless\\|while\\|until"
 				     "\\|for\\(each\\)?\\>\\(\\("
 				     cperl-maybe-white-and-comment-rex
-				     "\\(my\\|local\\|our\\)\\)?"
+				     "\\(state\\|my\\|local\\|our\\)\\)?"
 				     cperl-maybe-white-and-comment-rex
 				     "\\$[_a-zA-Z0-9]+\\)?\\)\\>"))
 			    (progn
@@ -6859,7 +6859,7 @@ Returns some position at the last line."
 	;; Looking at:
 	;; foreach my    $var
 	(if (looking-at
-	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(my\\|local\\|our\\|state\\)\\(\t*\\|[ \t][ \t]+\\)[^ \t\n]")
+	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(state\\|my\\|local\\|our\\)\\(\t*\\|[ \t][ \t]+\\)[^ \t\n]")
 	    (progn
 	      (forward-word 2)
 	      (delete-horizontal-space)
@@ -6868,7 +6868,7 @@ Returns some position at the last line."
 	;; Looking at:
 	;; foreach my $var     (
 	(if (looking-at
-	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(my\\|local\\|our\\|state\\)[ \t]*\\$[_a-zA-Z0-9]+\\(\t*\\|[ \t][ \t]+\\)[^ \t\n#]")
+	     "[ \t]*\\<for\\(each\\)?[ \t]+\\(state\\|my\\|local\\|our\\)[ \t]*\\$[_a-zA-Z0-9]+\\(\t*\\|[ \t][ \t]+\\)[^ \t\n#]")
 	    (progn
 	      (forward-sexp 3)
 	      (delete-horizontal-space)
@@ -7239,7 +7239,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      nil t)
 	(or noninteractive
 	    (imenu-progress-message prev-pos))
-	;; 2=package-group, 5=package-name 11=sub-name
+	;; 2=package-group, 5=package-name 8=sub-name
 	(cond
 	 ((and				; Skip some noise if building tags
 	   (match-beginning 5)		; package name
@@ -7249,7 +7249,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	  nil)
 	 ((and
 	   (or (match-beginning 2)
-	       (match-beginning 11))		; package or sub
+	       (match-beginning 8))		; package or sub
 	   ;; Skip if quoted (will not skip multi-line ''-strings :-():
 	   (null (get-text-property (match-beginning 1) 'syntax-table))
 	   (null (get-text-property (match-beginning 1) 'syntax-type))
@@ -7288,10 +7288,10 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	  (if (and is-proto (not is-pack)) nil
 	    (or is-pack
 		(setq name
-		      (buffer-substring (match-beginning 11) (match-end 11)))
+		      (buffer-substring (match-beginning 8) (match-end 8)))
 		(set-text-properties 0 (length name) nil name))
 	    (setq marker (make-marker))
-	    (set-marker marker (match-end (if is-pack 2 11)))
+	    (set-marker marker (match-end (if is-pack 2 8)))
 	    (cond (is-pack nil)
 		  ((string-match "[:']" name)
 		   (setq meth t))
@@ -7304,13 +7304,13 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      (push index index-alist))
 	    (if meth (push index index-meth-alist))
 	    (push index index-unsorted-alist)))
-	 ((match-beginning 19)		; POD section
-	  (setq name (buffer-substring (match-beginning 20) (match-end 20))
+	 ((match-beginning 16)		; POD section
+	  (setq name (buffer-substring (match-beginning 17) (match-end 17))
 		marker (make-marker))
-	  (set-marker marker (match-beginning 20))
+	  (set-marker marker (match-beginning 17))
 	  (set-text-properties 0 (length name) nil name)
 	  (setq name (concat (make-string
-			      (* 3 (- (char-after (match-beginning 19)) ?1))
+			      (* 3 (- (char-after (match-beginning 16)) ?1))
 			      ?\ )
 			     name)
 		index (cons name marker))
@@ -7331,7 +7331,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	 (let ((lst index-pack-alist) hier-list pack elt group name)
 	   ;; Remove "package ", reverse and uniquify.
 	   (while lst
-	     (setq elt (car lst) lst (cdr lst) name (substring (car elt) 11))
+	     (setq elt (car lst) lst (cdr lst) name (substring (car elt) 8))
 	     (if (assoc name hier-list) nil
 	       (setq hier-list (cons (cons name (cdr elt)) hier-list))))
 	   (setq lst index-meth-alist)
@@ -7379,11 +7379,11 @@ indentation and initial hashes.  Behaves usually outside of comment."
 (defun cperl-outline-level ()
   (looking-at outline-regexp)
   (cond ((not (match-beginning 1)) 0)	; beginning-of-file
-;;;; 2=package-group, 5=package-name 11=sub-name 19=head-level
+;;;; 2=package-group, 5=package-name 8=sub-name 16=head-level
 	((match-beginning 2) 0)		; package
-	((match-beginning 11) 1)		; sub
-	((match-beginning 19)
-	 (- (char-after (match-beginning 19)) ?0)) ; headN ==> N
+	((match-beginning 8) 1)		; sub
+	((match-beginning 16)
+	 (- (char-after (match-beginning 16)) ?0)) ; headN ==> N
 	(t 5)))				; should not happen
 
 
@@ -7471,6 +7471,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      "\\(^\\|[^$@%&\\]\\)\\<\\("
 	      (mapconcat
 	       'identity
+<<<<<<< HEAD
            '("if" "until" "while" "elsif" "else" "unless" "for"
              "foreach" "continue" "exit" "die" "last" "loop" "goto" "next"
              "redo" "return" "local" "exec" "sub" "do" "dump" "use" "our" "state"
@@ -7480,6 +7481,15 @@ indentation and initial hashes.  Behaves usually outside of comment."
              "given" "when" "default" "has" "returns" "of" "is" "does"
              "\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)?"
              "class" "module" "role" "try")
+=======
+	       '("if" "until" "while" "elsif" "else" 
+                 "given" "when" "default" 
+                 "unless" "for"
+		 "foreach" "continue" "exit" "die" "last" "goto" "next"
+		 "redo" "return" "local" "exec" "sub" "method" "do" "dump" 
+                 "use" "our"
+		 "require" "package" "eval" "my" "state" "BEGIN" "END" "CHECK" "INIT")
+>>>>>>> 31b523a2351f965a14cf9b2363b38c8527632bbc
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
 					; In what follows we use `type' style
@@ -9474,7 +9484,7 @@ $^E     Information about the last system error other than that provided by $!.
 $^F	The highest system file descriptor, ordinarily 2.
 $^H     The current set of syntax checks enabled by `use strict'.
 $^I	The value of the in-place edit extension (perl -i option).
-$^L     What formats output to perform a formfeed.  Default is \f.
+$^L     What formats output to perform a formfeed.  Default is \\f.
 $^M     A buffer for emergency memory allocation when running out of memory.
 $^O     The operating system name under which this copy of Perl was built.
 $^P	Internal debugging flag.
@@ -9556,7 +9566,7 @@ $~	The name of the current report format.
 @ARGV	Command line arguments (not including the command name - see $0).
 @INC	List of places to look for perl scripts during do/include/use.
 @_    Parameter array for subroutines; result of split() unless in list context.
-\\  Creates reference to what follows, like \$var, or quotes non-\w in strings.
+\\  Creates reference to what follows, like \\$var, or quotes non-\\w in strings.
 \\0	Octal char, e.g. \\033.
 \\E	Case modification terminator.  See \\Q, \\L, and \\U.
 \\L	Lowercase until \\E .  See also \\l, lc.
@@ -9753,6 +9763,7 @@ sprintf(FORMAT,LIST)
 sqrt(EXPR)
 srand(EXPR)
 stat(EXPR|FILEHANDLE|VAR)
+state VAR or state (VAR1,...)	Introduces a static lexical variable
 study[(SCALAR)]
 sub [NAME [(format)]] { BODY }	sub NAME [(format)];	sub [(format)] {...}
 substr(EXPR,OFFSET[,LEN])
@@ -9833,7 +9844,7 @@ ucfirst [ EXPR ]	Returns EXPR with upcased first letter.
 untie VAR	Unlink an object from a simple Perl variable.
 use PACKAGE [SYMBOL1, ...]  Compile-time `require' with consequent `import'.
 ... xor ...		Low-precedence synonym for exclusive or.
-prototype \&SUB	Returns prototype of the function given a reference.
+prototype \\&SUB	Returns prototype of the function given a reference.
 =head1		Top-level heading.
 =head2		Second-level heading.
 =head3		Third-level heading (is there such?).
