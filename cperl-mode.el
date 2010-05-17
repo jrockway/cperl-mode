@@ -7505,18 +7505,12 @@ indentation and initial hashes.  Behaves usually outside of comment."
                 '("if" "until" "while" "elsif" "else" "unless" "for"
                   "given" "when" "default" "break"
                   "foreach" "continue" "exit" "die" "last" "loop" "goto" "next"
-                  "redo" "return" "local" "exec" "sub" "do" "dump" "use" "our" "state"
+                  "redo" "return" "local" "exec" "do" "dump" "use" "our" "state"
                   "require" "package" "eval" "my" "BEGIN" "END" "CHECK"
-                  "INIT" "START" "FIRST" "ENTER" "LEAVE" "KEEP"
+                  "INIT" "START" "FIRST" "ENTER" "LEAVE" "KEEP" "UNITCHECK"
                   "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL"
-                  "given" "when" "default" "has" "returns" "of" "is" "does"             
-                  "class" "module" "role" "try")
-                "foreach" "continue" "exit" "die" "last" "goto" "next"
-                "redo" "return" "local" "exec" 
-                "do" "dump" 
-                "use" "our"
-                "require" "package" "eval" "my" "state" 
-                "BEGIN" "END" "CHECK" "INIT" "UNITCHECK"))
+                  "has" "returns" "of" "is" "does"
+                  "class" "module" "role" "try"))
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
 					; In what follows we use `type' style
