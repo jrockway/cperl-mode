@@ -10843,7 +10843,7 @@ do extra unwind via `cperl-unwind-to-safe'."
 	  (cperl-fontify-syntaxically to)))))
 
 (defvar cperl-version
-  (let ((v  "Revision: 6.2-Pugs/Github "))
+  (let ((v  "Revision: 6.2-Perl6/MXDeclare "))
     (string-match ":\\s *\\([-/0-9a-z.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
