@@ -68,7 +68,9 @@
 ;; The latest version is available from
 ;; http://github.com/jrockway/cperl-mode
 ;;
-;; (perhaps in the mx-declare branch)
+;; The MooseX::Declare stuff is maintained in "mx-declare" branch,
+;; the Perl6           stuff is maintained in "perl6-pugs" branch,
+;; and both are merged                     in "mxd-perl6-merge" branch.
 
 ;; You can either fine-tune the bells and whistles of this mode or
 ;; bulk enable them by putting
