@@ -5037,6 +5037,63 @@ Returns true if comment is found.  In POD will not move the point."
 	(put-text-property bb e 'face (if string 'font-lock-string-face
 					'font-lock-comment-face)))))
 
+(defun cperl-fontify-method-signature (bb e)
+  "Fontifiy subroutine/method prototype.
+
+BB is the starting position of the signature, including the (, E
+is the end of the signature, including the final ).
+
+This method can parse and highlight traditional prototypes (&@)
+as well as (many) MooseX::Method::Signatures method signatures.
+
+There are a few limitations; this method will not be called by
+the syntax scanner if the method signature is not on a single
+line, or if the signature contains extra parens.  So declare your
+types and coercions in advance, with MooseX::Types."
+
+  (save-excursion
+    (goto-char bb)
+    (save-match-data
+      (when (looking-at "(.*)")
+        (save-restriction
+          (narrow-to-region (1+ (match-beginning 0)) (1- (match-end 0)))
+          (goto-char (1+ (match-beginning 0)))
+          (remove-text-properties (point) (point-max) '(font-lock-face))
+
+          ;; traditional prototype (not signature)
+          (when (looking-at "^[\\_$@*;&]+$")
+            (put-text-property (match-beginning 0) (match-end 0)
+                               'font-lock-face 'font-lock-builtin-face)
+            (goto-char (match-end 0)))
+
+          ;; MX::Method::Signatures signature
+          (while (looking-at (concat
+              ;; type name
+              "[[:space:]]*\\(?:\\([A-Za-z:_|]+\\)[[:space:]]+\\)?"
+              ;; variable name (named) (required/optional)
+              "[:]?\\([$@%*;][A-Za-z:_]+\\)[!?]?[[:space:]]*"
+              "\\(\\(?:[[:space:]]*\\(?:"
+              "\\(?:does\\|is\\) +[A-Za-z:_]+\\|"
+              "where *{[^}]*}\\|"
+              " *= *[A-Za-z:_0-9]+"
+              "\\)\\)*\\)[[:space:]]*"
+              ;; end with invocant separator, comma, or end of string
+              "\\([,:]\\|$\\)"))
+            (when (match-string 1)
+              (put-text-property (match-beginning 1) (match-end 1)
+                                 'font-lock-face 'font-lock-type-face))
+            (put-text-property (match-beginning 2) (match-end 2)
+                               'font-lock-face 'font-lock-variable-name-face)
+            (when (match-string 3)
+              (put-text-property (match-beginning 3) (match-end 3)
+                                 'font-lock-face 'font-lock-keyword-face))
+            ;; This doesn't work right, it kills the other faces :(
+            ;; (if (equal (match-string 4) ":")
+            ;;     (put-text-property (match-beginning 0) (match-end 0)
+            ;;                        'font-lock-face '(:underline t)))
+            (goto-char (match-end 0)))))))
+  t)
+
 (defvar cperl-starters '(( ?\( . ?\) )
 			 ( ?\[ . ?\] )
 			 ( ?\{ . ?\} )
@@ -6490,8 +6547,8 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			(goto-char b)
 			(if (eq (char-after (match-beginning 17)) ?\( )
 			    (progn
-			      (cperl-commentify ; Prototypes; mark as string
-			       (match-beginning 17) (match-end 17) t)
+			      (cperl-fontify-method-signature
+			       (match-beginning 17) (match-end 17))
 			      (goto-char (match-end 0))
 			      ;; Now look for attributes after prototype:
 			      (forward-comment (buffer-size))
