@@ -7741,8 +7741,14 @@ indentation and initial hashes.  Behaves usually outside of comment."
             ;; nested parens in it.
 	    '("\\<\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\|require\\|use\\|import\\|no\\|bootstrap\\|\\(?:\\(?:multi\\|proto\\) \\)?method\\|before\\|after\\|around\\|override\\|augment\\)[ \t]+\\(?:#.+\n\\|[ \t]*\n\\)?[ \t]*\\([a-zA-z_][a-zA-z_0-9:]*\\)\\([ \t;]\\|$\\)" ; require A if B;
 	      2 font-lock-function-name-face)
-            '("\\<\\(?:with\\|extends\\)[ \t](?\\(?:\\([a-zA-z_][a-zA-z_0-9:]*\\) ?,? ?\\)+)?"
+            '("\\<\\(?:with\\|extends\\)[ \t]\\([a-zA-z_][a-zA-z_0-9:]*\\)"
               1 font-lock-function-name-face)
+
+            '("\\<\\(?:with\\|extends\\)[ \t]?("
+              (cperl-next-with-or-extends
+               nil nil
+               (1 font-lock-function-name-face t)))
+
 	    '("^[ \t]*format[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t]*=[ \t]*$"
 	      1 font-lock-function-name-face)
 	    (cond ((featurep 'font-lock-extra)
@@ -8146,6 +8152,16 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	(setq cperl-faces-init t))
     (error (message "cperl-init-faces (ignored): %s" errs))))
 
+(defun cperl-next-with-or-extends (end)
+  "Find the module names after with or extends.
+
+END is the bound passed by the font-lock machinery."
+  (let ((bound
+         (or (save-match-data
+               (save-excursion ;; don't search past the closing paren
+                 (re-search-forward ")" (line-end-position) t)))
+             end)))
+    (re-search-forward "\\([a-zA-Z0-9_:]+\\)[, \t ]*" bound t)))
 
 (defun cperl-ps-print-init ()
   "Initialization of `ps-print' components for faces used in CPerl."
