@@ -8,6 +8,7 @@
 ;; Maintainer: Ilya Zakharevich <ilyaz@cpan.org>
 ;; Maintainer for mx-declare branch: Jonathan Rockway <jon@jrock.us>
 ;; Maintainer for perl6-pugs branch: Steffen Schwigon <ss5@renormalist.net>
+;; Maintainer for mxd-perl6-merge branch: Steffen Schwigon <ss5@renormalist.net>
 ;; Keywords: languages, Perl
 
 ;; This particular file is not actually part of GNU Emacs.
