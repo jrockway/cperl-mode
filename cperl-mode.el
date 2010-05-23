@@ -1852,6 +1852,11 @@ Versions 5.2 ... 5.20 behaved as if this were `nil'."
   :type 'boolean
   :group 'cperl-indentation-details)
 
+(defcustom cperl-indent-subs-specially t
+  "*Non-nil means indent subs that are inside other blocks (hash values, for example) relative to the beginning of the \"sub\" keyword, rather than relative to the statement that contains the declaration."
+  :type 'boolean
+  :group 'cperl-indentation-details)
+
 (defcustom cperl-auto-newline nil
   "*Non-nil means automatically newline before and after braces,
 and after colons and semicolons, inserted in CPerl code.  The following
@@ -4714,6 +4719,7 @@ Will not look before LIM."
 			;; first thing on the line, say in the case of
 			;; anonymous sub in a hash.
 			(if (and;; Is it a sub in group starting on this line?
+                             cperl-indent-subs-specially
 			     (cond ((get-text-property (point) 'attrib-group)
 				    (goto-char (cperl-beginning-of-property
 						(point) 'attrib-group)))
