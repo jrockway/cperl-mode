@@ -3109,7 +3109,7 @@ the last)."
 ;;; Tired of editing this in 8 places every time I remember that there
 ;;; is another method-defining keyword
 (defvar cperl-sub-keywords
-  '("\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\)"))
+  '("\\(?:\\(?:multi\\|proto\\)[ \t]*\\)?\\(?:coro\\|sub\\|method\\|submethod\\|before\\|after\\|around\\|override\\|augment\\)"))
 
 (defvar cperl-sub-regexp (regexp-opt cperl-sub-keywords))
 
@@ -5520,8 +5520,11 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\|"
 		;; 1+6+2+1+1+6+1=18 extra () before this (old pack'var syntax;
 		;; we do not support intervening comments...):
-		"\\(\\<\\(?:sub\\|method\\)[ \t\n\f]+\\|[&*$@%]\\)[a-zA-Z0-9_]*'"
-		;; 1+6+2+1+1+6+1+1=19 extra () before this:
+		;; note: don't put any Moose/Perl6 sugar
+		;; (before/after/around) here, this is for very old
+		;; perl that you shouldn't be writing.
+		"\\(\\<sub[ \t\n\f]+\\|[&*$@%]\\)[a-zA-Z0-9_]*'"
+                ;; 1+6+2+1+1+6+1+1=19 extra () before this:
 		"\\|"
 		"__\\(END\\|DATA\\)__"	; __END__ or __DATA__
 		;; 1+6+2+1+1+6+1+1+1=20 extra () before this:
@@ -7486,7 +7489,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			"Face for things which should stand out"))
   ;;(setq font-lock-constant-face 'font-lock-constant-face)
   )
-
+; (cperl-init-faces)
 (defun cperl-init-faces ()
   (condition-case errs
       (progn
@@ -7516,6 +7519,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
                   "INIT" "START" "FIRST" "ENTER" "LEAVE" "KEEP" "UNITCHECK"
                   "UNDO" "NEXT" "LAST" "PRE" "POST" "CATCH" "CONTROL"
                   "has" "returns" "of" "is" "does"
+                  "with" "extends" "requires"
                   "class" "module" "role" "try"))
 	       "\\|")			; Flow control
 	      "\\)\\>") 2)		; was "\\)[ \n\t;():,\|&]"
@@ -7625,12 +7629,12 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      ;; "sort" "splice" "split" "study" "state" "sum" "take" "taken" "type" "token" "sub" "tie" "tr"
 	      ;; "undef" "uniq" "unless" "unshift" "untie" "until" "uniq" "use"
 	      ;; "while" "y" "zip"
-	      "AUTOLOAD\\|BEGIN\\|\\(UNIT\\)?CHECK\\|a\\(sync\\|tomically\\)\\|c\\(lass\\|ho\\(p\\|mp\\)\\|oro\\)\\|d\\(e\\(fined\\|lete\\)\\|"
+	      "AUTOLOAD\\|BEGIN\\|\\(UNIT\\)?CHECK\\|a\\(sync\\|tomically\\)\\|c\\(lass\\|ho\\(p\\|mp\\)\\|oro\\)\\|d\\(e\\(f\\(ined\\|ault\\)\\|lete\\)\\|"
 	      "o\\)\\|DESTROY\\|e\\(ach\\|val\\|xists\\|ls\\(e\\|if\\)\\)\\|"
 	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(ather\\|iven\\|r\\(ep\\|ammar\\)\\|oto\\)\\|has\\|INIT\\|if\\|k\\(eys\\|v\\)\\|"
 	      "l\\(ast\\|o\\(cal\\|op\\)\\)\\|m\\(a\\(p\\|x\\)\\|in\\|odule\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
 	      "p\\(a\\(ckage\\|irs\\)\\|ick\\|rint\\(\\|f\\)\\|ush\\|o\\(p\\|s\\)\\)\\|"
-	      "q\\(\\|q\\|w\\|x\\|r\\)\\|rx\\|re\\(gex\\|turn\\|d\\(o\\|uce\\)\\)\\|r\\(o\\|u\\)le\\|s\\(ay\\|pli\\(ce\\|t\\)\\|"
+	      "q\\(\\|q\\|w\\|x\\|r\\)\\|rx\\|re\\(gex\\|turn\\|quires\\|d\\(o\\|uce\\)\\)\\|r\\(o\\|u\\)le\\|s\\(ay\\|pli\\(ce\\|t\\)\\|"
 	      "calar\\|t\\(udy\\|ate\\)\\|u\\(b\\|m\\)\\|hift\\|ort\\)\\|t\\(r\\|ie\\|ype\\|oken\\|aken?\\)\\|"
 	      "u\\(se\\|n\\(iq\\|shift\\|ti\\(l\\|e\\)\\|def\\|less\\)\\)\\|"
 	      "while\\|y\\|zip\\|__\\(END\\|DATA\\)__" ;__DATA__ added manually
@@ -7669,7 +7673,10 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			 (if (eq (char-after (cperl-1- (match-end 0))) ?\{ )
 			     'font-lock-function-name-face
 			   'font-lock-variable-name-face))))
-	    '("\\<\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\|require\\|use\\|import\\|no\\|bootstrap\\)[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t;]" ; require A if B;
+            ;; XXX: i think this is redundant for the sub-alikes, but
+            ;; it will fix a corner case where the prototype has
+            ;; nested parens in it.
+	    '("\\<\\(package\\|class\\|module\\|role\\|grammar\\|rule\\|token\\|regex\\|require\\|use\\|import\\|no\\|bootstrap\\|with\\|extends\\|\\(?:\\(?:multi\\|proto\\) \\)?method\\|before\\|after\\|around\\|override\\|augment\\)[ \t]+\\(?:#.+\n\\|[ \t]*\n\\)?[ \t]*\\([a-zA-z_][a-zA-z_0-9:]*\\)\\([ \t;]\\|$\\)" ; require A if B;
 	      2 font-lock-function-name-face)
 	    '("^[ \t]*format[ \t]+\\([a-zA-z_][a-zA-z_0-9:]*\\)[ \t]*=[ \t]*$"
 	      1 font-lock-function-name-face)
