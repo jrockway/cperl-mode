@@ -8160,7 +8160,7 @@ END is the bound passed by the font-lock machinery."
          (or (save-match-data
                (save-excursion ;; don't search past the closing paren
                  (re-search-forward ")" (line-end-position) t)))
-             end)))
+             (line-end-position))))
     (re-search-forward "\\([a-zA-Z0-9_:]+\\)[, \t ]*" bound t)))
 
 (defun cperl-ps-print-init ()
