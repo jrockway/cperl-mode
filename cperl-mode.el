@@ -1736,8 +1736,9 @@ or as help on variables `cperl-tips', `cperl-problems',
 			  [(control c) (control h) f])))
   (setq major-mode cperl-use-major-mode)
   (setq mode-name "CPerl")
-  (let ((prev-a-c abbrevs-changed))
-    (define-abbrev-table 'cperl-mode-abbrev-table '(
+  (when (cperl-val 'cperl-electric-keywords)
+    (let ((prev-a-c abbrevs-changed))
+      (define-abbrev-table 'cperl-mode-abbrev-table '(
 		("if" "if" cperl-electric-keyword 0 :system)
 		("elsif" "elsif" cperl-electric-keyword 0 :system)
 		("while" "while" cperl-electric-keyword 0 :system)
@@ -1758,9 +1759,8 @@ or as help on variables `cperl-tips', `cperl-problems',
 		("over" "over" cperl-electric-pod 0 :system)
 		("head1" "head1" cperl-electric-pod 0 :system)
 		("head2" "head2" cperl-electric-pod 0 :system)))
-	(setq abbrevs-changed prev-a-c))
-  (setq local-abbrev-table cperl-mode-abbrev-table)
-  (if (cperl-val 'cperl-electric-keywords)
+      (setq abbrevs-changed prev-a-c))
+      (setq local-abbrev-table cperl-mode-abbrev-table)
       (abbrev-mode 1))
   (set-syntax-table cperl-mode-syntax-table)
   ;; Until Emacs is multi-threaded, we do not actually need it local:
