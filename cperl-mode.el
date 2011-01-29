@@ -1935,7 +1935,7 @@ or as help on variables `cperl-tips', `cperl-problems',
   (perldb (read-from-minibuffer "Run perldb (like this): "
 				(if (consp gud-perldb-history)
 				    (car gud-perldb-history)
-				  (concat "perl " ;;(file-name-nondirectory
+				  (concat "perl -d " ;;(file-name-nondirectory
 					  ;; I have problems
 					  ;; in OS/2
 					  ;; otherwise
