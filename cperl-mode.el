@@ -6730,7 +6730,7 @@ in subdirectories too."
   (interactive)
   (let ((cmd "etags")
 	(args '("-l" "none" "-r"
-		;;       1=fullname  2=package?             3=name                       4=proto?             5=attrs? (VERY APPROX!)
+		;;                        1=fullname  2=package?             3=name                       4=proto?             5=attrs? (VERY APPROX!)
 		"/\\<" cperl-sub-regexp "[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\(([^()]*)[ \t]*\\)?\\([ \t]*:[^#{;]*\\)?\\([{#]\\|$\\)/\\3/"
 		"-r"
 		"/\\<package[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\([#;]\\|$\\)/\\1/"
