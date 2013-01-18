@@ -3747,7 +3747,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		"\\|"
 		;; 1+6+2+1+1+6+1=18 extra () before this (old pack'var syntax;
 		;; we do not support intervening comments...):
-		"\\(\\<sub[ \t\n\f]+\\|[&*$@%]\\)[a-zA-Z0-9_]*'"
+		"\\(\\<" cperl-sub-regexp "[ \t\n\f]+\\|[&*$@%]\\)[a-zA-Z0-9_]*'"
 		;; 1+6+2+1+1+6+1+1=19 extra () before this:
 		"\\|"
 		"__\\(END\\|DATA\\)__"	; __END__ or __DATA__
@@ -6730,8 +6730,8 @@ in subdirectories too."
   (interactive)
   (let ((cmd "etags")
 	(args '("-l" "none" "-r"
-		;;       1=fullname  2=package?             3=name                       4=proto?             5=attrs? (VERY APPROX!)
-		"/\\<sub[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\(([^()]*)[ \t]*\\)?\\([ \t]*:[^#{;]*\\)?\\([{#]\\|$\\)/\\3/"
+		;;                        1=fullname  2=package?             3=name                       4=proto?             5=attrs? (VERY APPROX!)
+		"/\\<" cperl-sub-regexp "[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\(([^()]*)[ \t]*\\)?\\([ \t]*:[^#{;]*\\)?\\([{#]\\|$\\)/\\3/"
 		"-r"
 		"/\\<package[ \\t]+\\(\\([a-zA-Z0-9:_]*::\\)?\\([a-zA-Z0-9_]+\\)\\)[ \\t]*\\([#;]\\|$\\)/\\1/"
 		"-r"
@@ -6947,7 +6947,7 @@ by CPerl."
 			(number-to-string (1- (elt elt 1))) ; Char pos 0-based
 			"\n")
 		(if (and (string-match "^[_a-zA-Z]+::" (car elt))
-			 (string-match "^sub[ \t]+\\([_a-zA-Z]+\\)[^:_a-zA-Z]"
+			 (string-match "^" cperl-sub-regexp "[ \t]+\\([_a-zA-Z]+\\)[^:_a-zA-Z]"
 				       (elt elt 3)))
 		    ;; Need to insert the name without package as well
 		    (setq lst (cons (cons (substring (elt elt 3)
@@ -7077,7 +7077,7 @@ Use as
    "^\\("
       "\\(package\\)\\>"
      "\\|"
-      "sub\\>[^\n]+::"
+      cperl-sub-regexp "\\>[^\n]+::"
      "\\|"
       "[a-zA-Z_][a-zA-Z_0-9:]*(\C-?[^\n]+::" ; XSUB?
      "\\|"
