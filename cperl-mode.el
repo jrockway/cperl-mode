@@ -3146,7 +3146,9 @@ and closing parentheses and brackets."
 	 ((eq 'continuation (elt i 0))
 	  ;; [continuation statement-start char-after is-block is-brace]
 	  (goto-char (elt i 1))		; statement-start
-	  (+ (if (memq (elt i 2) (append "}])" nil)) ; char-after
+	  (+ (if (or (memq (elt i 2) (append "}])" nil)) ; char-after
+                     (eq 'continuation ; do not repeat cperl-close-paren-offset
+                         (elt (cperl-sniff-for-indent parse-data) 0)))
 		 0			; Closing parenth
 	       cperl-continued-statement-offset)
 	     (if (or (elt i 3)		; is-block
