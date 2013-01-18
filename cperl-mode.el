@@ -1752,6 +1752,7 @@ or as help on variables `cperl-tips', `cperl-problems',
 		("foreachmy" "foreachmy" cperl-electric-keyword 0 :system)
 		("do" "do" cperl-electric-keyword 0 :system)
 		("=pod" "=pod" cperl-electric-pod 0 :system)
+		("=begin" "=begin" cperl-electric-pod 0 :system)
 		("=over" "=over" cperl-electric-pod 0 :system)
 		("=head1" "=head1" cperl-electric-pod 0 :system)
 		("=head2" "=head2" cperl-electric-pod 0 :system)
@@ -2253,6 +2254,7 @@ to nil."
 	 (save-excursion (or (not (re-search-backward "^=" nil t))
 			     (or
 			      (looking-at "=cut")
+			      (looking-at "=end")
 			      (and cperl-use-syntax-table-text-property
 				   (not (eq (get-text-property (point)
 							       'syntax-type)
@@ -2327,7 +2329,7 @@ to nil."
 	     (get-text-property (point) 'in-pod)
 	     (cperl-after-expr-p nil "{;:")
 	     (and (re-search-backward "\\(\\`\n?\\|^\n\\)=\\sw+" (point-min) t)
-		  (not (looking-at "\n*=cut"))
+		  (not (or (looking-at "\n*=cut")(looking-at "\n*=end")))
 		  (or (not cperl-use-syntax-table-text-property)
 		      (eq (get-text-property (point) 'syntax-type) 'pod))))))
 	 (progn
@@ -2386,6 +2388,7 @@ to nil."
 	     beg t)))
 	 (save-excursion (or (not (re-search-backward "^=" nil t))
 			     (looking-at "=cut")
+			     (looking-at "=end")
 			     (and cperl-use-syntax-table-text-property
 				  (not (eq (get-text-property (point)
 							      'syntax-type)
@@ -2485,7 +2488,7 @@ If in POD, insert appropriate lines."
 	  ;; We are after \n now, so look for the rest
 	  (if (looking-at "\\(\\`\n?\\|\n\\)=\\sw+")
 	      (progn
-		(setq cut (looking-at "\\(\\`\n?\\|\n\\)=cut\\>"))
+		(setq cut (looking-at "\\(\\`\n?\\|\n\\)=\\(cut\\|end\\)\\>"))
 		(setq over (looking-at "\\(\\`\n?\\|\n\\)=over\\>"))
 		t)))
 	(if (and over
@@ -3821,7 +3824,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			     state-point b nil nil state)
 		      state-point b)
 		(if (or (nth 3 state) (nth 4 state)
-			(looking-at "cut\\>"))
+			(looking-at "\\(cut\\|\\end\\)\\>"))
 		    (if (or (nth 3 state) (nth 4 state) ignore-max)
 			nil		; Doing a chunk only
 		      (message "=cut is not preceded by a POD section")
@@ -3834,10 +3837,10 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 			b1 nil)		; error condition
 		  ;; We do not search to max, since we may be called from
 		  ;; some hook of fontification, and max is random
-		  (or (re-search-forward "^\n=cut\\>" stop-point 'toend)
+		  (or (re-search-forward "^\n=\\(cut\\|\\end\\)\\>" stop-point 'toend)
 		      (progn
 			(goto-char b)
-			(if (re-search-forward "\n=cut\\>" stop-point 'toend)
+			(if (re-search-forward "\n=\\(cut\\|\\end\\)\\>" stop-point 'toend)
 			    (progn
 			      (message "=cut is not preceded by an empty line")
 			      (setq b1 t)
@@ -7976,6 +7979,8 @@ prototype \\&SUB	Returns prototype of the function given a reference.
 =back		End list.
 =cut		Switch from POD to Perl.
 =pod		Switch from Perl to POD.
+=begin		Switch from Perl6 to POD.
+=end		Switch from POD to Perl6.
 ")
 
 (defun cperl-switch-to-doc-buffer (&optional interactive)
