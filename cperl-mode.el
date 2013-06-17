@@ -3065,7 +3065,11 @@ and closing parentheses and brackets."
        ((vectorp i)
 	(setq what (assoc (elt i 0) cperl-indent-rules-alist))
 	(cond
-	 (what (cadr what))		; Load from table
+     (what
+      (let ((action (cadr what)))
+        (cond ((fboundp action) (apply action (list i parse-data)))
+              ((numberp action) (+ action (current-indentation)))
+              (t 0))))
 	 ;;
 	 ;; Indenters for regular expressions with //x and qw()
 	 ;;
