@@ -3065,7 +3065,11 @@ and closing parentheses and brackets."
        ((vectorp i)
 	(setq what (assoc (elt i 0) cperl-indent-rules-alist))
 	(cond
-	 (what (cadr what))		; Load from table
+     (what
+      (let ((action (cadr what)))
+        (cond ((fboundp action) (apply action (list i parse-data)))
+              ((numberp action) (+ action (current-indentation)))
+              (t 0))))
 	 ;;
 	 ;; Indenters for regular expressions with //x and qw()
 	 ;;
@@ -4828,7 +4832,7 @@ statement would start; thus the block in ${func()} does not count."
 		  (save-excursion
 		    (forward-sexp -1)
 		    ;; else {}     but not    else::func {}
-		    (or (and (looking-at "\\(else\\|continue\\|grep\\|map\\|BEGIN\\|END\\|UNITCHECK\\|CHECK\\|INIT\\)\\>")
+		    (or (and (looking-at "\\(else\\|catch\\|try\\|continue\\|grep\\|map\\|BEGIN\\|END\\|UNITCHECK\\|CHECK\\|INIT\\)\\>")
 			     (not (looking-at "\\(\\sw\\|_\\)+::")))
 			;; sub f {}
 			(progn
@@ -5673,6 +5677,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
                 '("if" "until" "while" "elsif" "else"
                  "given" "when" "default" "break"
                  "unless" "for"
+                 "try" "catch" "finally"
 		 "foreach" "continue" "exit" "die" "last" "goto" "next"
 		 "redo" "return" "local" "exec"
                  "do" "dump"
@@ -5766,13 +5771,13 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      ;; "sort" "splice" "split" "state" "study" "sub" "tie" "tr"
 	      ;; "undef" "unless" "unshift" "untie" "until" "use"
 	      ;; "when" "while" "y"
-	      "AUTOLOAD\\|BEGIN\\|\\(UNIT\\)?CHECK\\|break\\|cho\\(p\\|mp\\)\\|d\\(e\\(f\\(ault|ined\\)\\|lete\\)\\|"
+	      "AUTOLOAD\\|BEGIN\\|\\(UNIT\\)?CHECK\\|break\\|c\\(atch\\|ho\\(p\\|mp\\)\\)\\|d\\(e\\(f\\(inally\\|ault\\|ined\\)\\|lete\\)\\|"
 	      "o\\)\\|DESTROY\\|e\\(ach\\|val\\|xists\\|ls\\(e\\|if\\)\\)\\|"
 	      "END\\|for\\(\\|each\\|mat\\)\\|g\\(iven\\|rep\\|oto\\)\\|INIT\\|if\\|keys\\|"
 	      "l\\(ast\\|ocal\\)\\|m\\(ap\\|y\\)\\|n\\(ext\\|o\\)\\|our\\|"
 	      "p\\(ackage\\|rint\\(\\|f\\)\\|ush\\|o\\(p\\|s\\)\\)\\|"
 	      "q\\(\\|q\\|w\\|x\\|r\\)\\|re\\(turn\\|do\\)\\|s\\(ay\\|pli\\(ce\\|t\\)\\|"
-	      "calar\\|t\\(ate\\|udy\\)\\|ub\\|hift\\|ort\\)\\|t\\(r\\|ie\\)\\|"
+	      "calar\\|t\\(ate\\|udy\\)\\|ub\\|hift\\|ort\\)\\|t\\(ry?\\|ie\\)\\|"
 	      "u\\(se\\|n\\(shift\\|ti\\(l\\|e\\)\\|def\\|less\\)\\)\\|"
 	      "wh\\(en\\|ile\\)\\|y\\|__\\(END\\|DATA\\)__" ;__DATA__ added manually
 	      "\\|[sm]"			; Added manually
