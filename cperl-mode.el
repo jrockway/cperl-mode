@@ -8577,7 +8577,7 @@ the appropriate statement modifier."
             (pargs (cdr (car flist))))
         (setq command
               (concat command " | " pcom " "
-                      (mapconcat '(lambda (phrase)
+                      (mapconcat #'(lambda (phrase)
                                     (if (not (stringp phrase))
                                         (error "Malformed Man-filter-list"))
                                     phrase)
