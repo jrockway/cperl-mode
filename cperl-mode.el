@@ -5944,7 +5944,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	  (if cperl-highlight-variables-indiscriminately
 	      (setq t-font-lock-keywords-1
 		    (append t-font-lock-keywords-1
-			    (list '("\\([$*]{?\\sw+\\)" 1
+			    (list '("\\([$*]{?\\(?:\\sw+\\|::\\)+\\)" 1
 				    font-lock-variable-name-face)))))
 	  (setq cperl-font-lock-keywords-1
 		(if cperl-syntaxify-by-font-lock
