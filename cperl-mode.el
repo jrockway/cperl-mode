@@ -2929,6 +2929,8 @@ Will not look before LIM."
 		     (cperl-backward-to-noncomment containing-sexp))
 		   ;; Now we get non-label preceeding the indent point
 		   (if (not (or (eq (1- (point)) containing-sexp)
+                                (and cperl-indent-parens-as-block
+                                     (not is-block))
 				(memq (preceding-char)
 				      (append (if is-block " ;{" " ,;{") '(nil)))
 				(and (eq (preceding-char) ?\})
