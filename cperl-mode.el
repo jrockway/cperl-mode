@@ -6959,7 +6959,7 @@ by CPerl."
 			(number-to-string (1- (elt elt 1))) ; Char pos 0-based
 			"\n")
 		(if (and (string-match "^[_a-zA-Z]+::" (car elt))
-			 (string-match "^" cperl-sub-regexp "[ \t]+\\([_a-zA-Z]+\\)[^:_a-zA-Z]"
+			 (string-match (concat "^" cperl-sub-regexp "[ \t]+\\([_a-zA-Z]+\\)[^:_a-zA-Z]")
 				       (elt elt 3)))
 		    ;; Need to insert the name without package as well
 		    (setq lst (cons (cons (substring (elt elt 3)
