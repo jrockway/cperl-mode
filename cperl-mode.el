@@ -6481,7 +6481,7 @@ data already), may be restored by `cperl-set-style-back'.
 Choosing \"Current\" style will not change style, so this may be used for
 side-effect of memorizing only.  Examples in `cperl-style-examples'."
   (interactive
-   (let ((list (mapcar (function (lambda (elt) (list (car elt))))
+   (let ((list (mapcar (function #'(lambda (elt) (list (car elt))))
 		       cperl-style-alist)))
      (list (completing-read "Enter style: " list nil 'insist))))
   (or cperl-old-style
@@ -6504,6 +6504,11 @@ side-effect of memorizing only.  Examples in `cperl-style-examples'."
       (setq setting (car cperl-old-style)
 	    cperl-old-style (cdr cperl-old-style))
       (set (car setting) (cdr setting)))))
+
+(defun cperl-add-style (style)
+  "Add a new custom style created by the user to the list of available styles."
+  (when (and (listp style) (stringp (car style)) (listp (cdr style)))
+    (setf cperl-style-alist (append style cperl-style-alist))))
 
 (defun cperl-check-syntax ()
   (interactive)
