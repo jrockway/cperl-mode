@@ -6505,9 +6505,30 @@ side-effect of memorizing only.  Examples in `cperl-style-examples'."
       (set (car setting) (cdr setting)))))
 
 (defun cperl-add-style (style)
-  "Add a new custom style created by the user to the list of available styles."
-  (when (and (listp style) (stringp (car style)) (listp (cdr style)))
-    (setf cperl-style-alist (append style cperl-style-alist))))
+  "Add a new custom style created by the user to the list of available styles.
+
+The new style will be available to be used with the function `cperl-set-style'.
+New styles can be created this way:
+  (defconst style '((\"my-cool-style\"
+                     (cperl-indent-level . 2)
+                     (cperl-brace-offset . 2)
+                     (cperl-brace-imaginary-offset . 0)
+                     (cperl-label-offset . -2))))
+
+Now calling : (cperl-add-style style) will add the new style.
+You can activate the new style this way : (cperl-set-style \"my-cool-style\""
+  (labels ((validate-style (custom-style)
+                           (when (and (listp style) (listp (car style)) (stringp (car (car style)))
+                                      (listp (cdr (car style))))
+                             (let ((style-def (cdr (car style)))
+                                   (valid t))
+                               (dolist (item style-def)
+                                 (unless (consp item)
+                                   (setf valid nil)
+                                   (return)))
+                               valid))))
+    (when (funcall #'validate-style style)
+      (setf cperl-style-alist (append style cperl-style-alist)))))
 
 (defun cperl-check-syntax ()
   (interactive)
