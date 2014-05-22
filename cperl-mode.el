@@ -7243,32 +7243,32 @@ One may build such TAGS files from CPerl mode menu."
     (setq ord 2)
     (mapc move-deeper methods)
     (if recurse
-	(mapc (function (lambda (elt)
-			  (cperl-tags-treeify elt (1+ level))))
+	(mapc #'(lambda (elt)
+			  (cperl-tags-treeify elt (1+ level)))
 	      (cdr to)))
     ;;Now clean up leaders with one child only
-    (mapc (function (lambda (elt)
+    (mapc #'(lambda (elt)
 		      (if (not (and (listp (cdr elt))
 				    (eq (length elt) 2))) nil
 			(setcar elt (car (nth 1 elt)))
-			(setcdr elt (cdr (nth 1 elt))))))
+			(setcdr elt (cdr (nth 1 elt)))))
 	  (cdr to))
     ;; Sort the roots of subtrees
     (if (default-value 'imenu-sort-function)
 	(setcdr to
 		(sort (cdr to) (default-value 'imenu-sort-function))))
     ;; Now add back functions removed from display
-    (mapc (function (lambda (elt)
-		      (setcdr to (cons elt (cdr to)))))
+    (mapc #'(lambda (elt)
+		      (setcdr to (cons elt (cdr to))))
 	  (if (default-value 'imenu-sort-function)
 	      (nreverse
 	       (sort root-functions (default-value 'imenu-sort-function)))
 	    root-functions))
     ;; Now add back packages removed from display
-    (mapc (function (lambda (elt)
+    (mapc #'(lambda (elt)
 		      (setcdr to (cons (cons (concat "package " (car elt))
 					     (cdr elt))
-				       (cdr to)))))
+				       (cdr to))))
 	  (if (default-value 'imenu-sort-function)
 	      (nreverse
 	       (sort root-packages (default-value 'imenu-sort-function)))
@@ -7304,8 +7304,7 @@ One may build such TAGS files from CPerl mode menu."
   (let (list)
     (cons 'keymap
 	  (mapcar
-	   (function
-	    (lambda (elt)
+	    #'(lambda (elt)
 	      (cond ((listp (cdr elt))
 		     (setq list (cperl-list-fold
 				 (cdr elt) (car elt) imenu-max-items))
@@ -7313,7 +7312,7 @@ One may build such TAGS files from CPerl mode menu."
 			   (cons (car elt)
 				 (cperl-menu-to-keymap list))))
 		    (t
-		     (list (cdr elt) (car elt) t))))) ; t is needed in 19.34
+		     (list (cdr elt) (car elt) t)))) ; t is needed in 19.34
 	   (cperl-list-fold menu "Root" imenu-max-items)))))
 
 
@@ -7365,17 +7364,17 @@ Currently it is tuned to C and Perl syntax."
     (setq last-nonmenu-event 13)	; To disable popup
     (goto-char (point-min))
     (map-y-or-n-p "Insert space here? "
-		  (lambda (arg) (insert " "))
+		  #'(lambda (arg) (insert " "))
 		  'cperl-next-bad-style
 		  '("location" "locations" "insert a space into")
-		  '((?\C-r (lambda (arg)
+		  '((?\C-r #'(lambda (arg)
 			     (let ((buffer-quit-function
 				    'exit-recursive-edit))
 			       (message "Exit with Esc Esc")
 			       (recursive-edit)
 			       t))	; Consider acted upon
 			   "edit, exit with Esc Esc")
-		    (?e (lambda (arg)
+		    (?e #'(lambda (arg)
 			  (let ((buffer-quit-function
 				 'exit-recursive-edit))
 			    (message "Exit with Esc Esc")
@@ -8615,13 +8614,12 @@ a result of qr//, this is not a performance hit), t for the rest."
   (let (pp)
     (and (eq (get-text-property beg 'syntax-type) 'string)
 	 (setq beg (next-single-property-change beg 'syntax-type nil limit)))
-    (cperl-map-pods-heres
-     (function (lambda (s e p)
-		 (if (memq (get-text-property s 'REx-interpolated) skip)
-		     t
-		   (setq pp s)
-		   nil)))	; nil stops
-     'REx-interpolated beg limit)
+    (cperl-map-pods-heres #'(lambda (s e p)
+                              (if (memq (get-text-property s 'REx-interpolated) skip)
+                                  t
+                                (setq pp s)
+                                nil))	; nil stops
+                          'REx-interpolated beg limit)
     (if pp (goto-char pp)
       (message "No more interpolated REx"))))
 
@@ -8644,15 +8642,14 @@ If a region is highlighted, restricts to the region."
 		end (max (mark) (point)))
 	(setq beg (point-min)
 	      end (point-max)))
-      (cperl-map-pods-heres (function
-			     (lambda (s e p)
+      (cperl-map-pods-heres #'(lambda (s e p)
 			       (if do-heres
 				   (setq e (save-excursion
 					     (goto-char e)
 					     (forward-line -1)
 					     (point))))
 			       (ispell-region s e)
-			       t))
+			       t)
 			    (if do-heres 'here-doc-group 'in-pod)
 			    beg end))))
 
@@ -8739,9 +8736,9 @@ start with default arguments, then refine the slowdown regions."
   (or l (setq l 1))
   (or step (setq step 500))
   (or lim (setq lim 40))
-  (let* ((timems (function (lambda ()
+  (let* ((timems #'(lambda ()
 			     (let ((tt (current-time)))
-			       (+ (* 1000 (nth 1 tt)) (/ (nth 2 tt) 1000))))))
+			       (+ (* 1000 (nth 1 tt)) (/ (nth 2 tt) 1000)))))
 	 (tt (funcall timems)) (c 0) delta tot)
     (cperl-goto-line l)
     (cperl-mode)
@@ -8966,7 +8963,7 @@ whithin Lisp code since it is an interactive function."
 
     (goto-char (point-min))
     (forward-line (1- line))))
-(cperl-goto-line 8971)
+
 (provide 'cperl-mode)
 
 ;; arch-tag: 42e5b19b-e187-4537-929f-1a7408980ce6
