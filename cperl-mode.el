@@ -8952,16 +8952,21 @@ do extra unwind via `cperl-unwind-to-safe'."
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
 
-(defun cperl-goto-line (line-num &optional buffer)
-  "Go to the line line - 1 counting from the beginning of the buffer.
+(defun cperl-goto-line (line &optional buffer-or-name)
+  "Go to the LINE counting from the beginning of the BUFFER.
 
 This purpose of this function is to prevent the use of `goto-line' function
-whithin Lisp code since it is an interactive function. This function is a
-copy and paste of the alternative way of doing the same within the lisp code
-provided by the `goto-line' documentation."
-  (goto-char (point-min))
-  (forward-line (1- line-num)))
+whithin Lisp code since it is an interactive function."
+  (let ((window (get-buffer-window (current-buffer)))
+        buffer)
+    (when buffer-or-name
+      (setf buffer (get-buffer buffer-or-name))
+      (set-buffer buffer)
+      (set-window-buffer window buffer))
 
+    (goto-char (point-min))
+    (forward-line (1- line))))
+(cperl-goto-line 8971)
 (provide 'cperl-mode)
 
 ;; arch-tag: 42e5b19b-e187-4537-929f-1a7408980ce6
