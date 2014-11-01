@@ -1182,7 +1182,7 @@ versions of Emacs."
   ;;(cperl-define-key "\M-q" 'cperl-fill-paragraph)
   ;;(cperl-define-key "\e;" 'cperl-indent-for-comment)
   (cperl-define-key "\177" 'cperl-electric-backspace)
-  (cperl-define-key "\t" 'cperl-indent-command)
+  (cperl-define-key "\t" 'cperl-tab-key-command)
   ;; don't clobber the backspace binding:
   (cperl-define-key "\C-c\C-hF" 'cperl-info-on-command
 		    [(control c) (control h) F])
@@ -2620,6 +2620,12 @@ key.  Will untabify if `cperl-electric-backspace-untabify' is non-nil."
 	  (= (char-after (or (scan-lists (point) -1 1) (point-min))) ?\()))
     (error nil)))
 
+(defun cperl-tab-key-command (&optional whole-exp)
+  (interactive "P")
+  (if (region-active-p)
+      (indent-region (region-beginning) (region-end))
+    (cperl-indent-command whole-exp)))
+
 (defun cperl-indent-command (&optional whole-exp)
   "Indent current line as Perl code, or in some cases insert a tab character.
 If `cperl-tab-always-indent' is non-nil (the default), always indent current
