@@ -82,62 +82,30 @@
 (defvar vc-sccs-header)
 
 (eval-when-compile
-      (condition-case nil
-	  (require 'custom)
-	(error nil))
+      (require 'custom)
       (condition-case nil
 	  (require 'man)
 	(error nil))
-      (defvar cperl-can-font-lock
-	(or (featurep 'xemacs)
-	    (and (boundp 'emacs-major-version)
-		 (or window-system
-		     (> emacs-major-version 20)))))
-      (if cperl-can-font-lock
-	  (require 'font-lock))
+      (require 'font-lock)
       (defvar msb-menu-cond)
       (defvar gud-perldb-history)
       (defvar font-lock-background-mode) ; not in Emacs
       (defvar font-lock-display-type)	; ditto
-      (defvar paren-backwards-message)	; Not in newer XEmacs?
-      (or (fboundp 'defgroup)
-	  (defmacro defgroup (name val doc &rest arr)
-	    nil))
-      (or (fboundp 'custom-declare-variable)
-	  (defmacro defcustom (name val doc &rest arr)
-	    `(defvar ,name ,val ,doc)))
-      (or (and (fboundp 'custom-declare-variable)
-	       (string< "19.31" emacs-version))	;  Checked with 19.30: defface does not work
-	  (defmacro defface (&rest arr)
-	    nil))
       ;; Avoid warning (tmp definitions)
-      (or (fboundp 'x-color-defined-p)
-	  (defmacro x-color-defined-p (col)
-	    (cond ((fboundp 'color-defined-p) `(color-defined-p ,col))
-		  ;; XEmacs >= 19.12
+      (or (fboundp 'color-defined-p)
+	  (defmacro color-defined-p (col)
+	    (cond ;; XEmacs >= 19.12
 		  ((fboundp 'valid-color-name-p) `(valid-color-name-p ,col))
-		  ;; XEmacs 19.11
-		  ((fboundp 'x-valid-color-name-p) `(x-valid-color-name-p ,col))
-		  (t '(error "Cannot implement color-defined-p")))))
+                  (t '(error "Cannot implement color-defined-p")))))
       (defmacro cperl-is-face (arg)	; Takes quoted arg
 	(cond ((fboundp 'find-face)
 	       `(find-face ,arg))
-	      (;;(and (fboundp 'face-list)
-	       ;;	(face-list))
-	       (fboundp 'face-list)
-	       `(member ,arg (and (fboundp 'face-list)
-                                  (face-list))))
-	      (t
-	       `(boundp ,arg))))
-      (defmacro cperl-make-face (arg descr) ; Takes unquoted arg
-	(cond ((fboundp 'make-face)
-	       `(make-face (quote ,arg)))
-	      (t
-	       `(defvar ,arg (quote ,arg) ,descr))))
+	      ((fboundp 'face-list)
+	       `(member ,arg (face-list)))))
       (defmacro cperl-force-face (arg descr) ; Takes unquoted arg
 	`(progn
 	     (or (cperl-is-face (quote ,arg))
-		 (cperl-make-face ,arg ,descr))
+		 (make-face (quote ,arg) ,descr))
 	     (or (boundp (quote ,arg)) ; We use unquoted variants too
 		 (defvar ,arg (quote ,arg) ,descr))))
       (if (featurep 'xemacs)
@@ -149,28 +117,15 @@
 	  `(etags-snarf-tag)))
       (if (featurep 'xemacs)
 	  (defmacro cperl-etags-goto-tag-location (elt)
-	    ;;(progn
-            ;; (switch-to-buffer (get-file-buffer (elt ,elt 0)))
-            ;; (set-buffer (get-file-buffer (elt ,elt 0)))
-            ;; Probably will not work due to some save-excursion???
-            ;; Or save-file-position?
-            ;; (message "Did I get to line %s?" (elt ,elt 1))
             `(goto-line (string-to-int (elt ,elt 1))))
-	;;)
 	(defmacro cperl-etags-goto-tag-location (elt)
 	  `(etags-goto-tag-location ,elt))))
-
-(defvar cperl-can-font-lock
-  (or (featurep 'xemacs)
-      (and (boundp 'emacs-major-version)
-	   (or window-system
-	       (> emacs-major-version 20)))))
 
 (defun cperl-choose-color (&rest list)
   (let (answer)
     (while list
       (or answer
-	  (if (or (x-color-defined-p (car list))
+	  (if (or (color-defined-p (car list))
 		  (null (cdr list)))
 	      (setq answer (car list))))
       (setq list (cdr list)))
@@ -423,12 +378,6 @@ Affects: `cperl-font-lock', `cperl-electric-lbrace-space',
   :type '(repeat string)
      :group 'cperl)
 
-;; This became obsolete...
-(defvar cperl-vc-header-alist nil)
-(make-obsolete-variable
- 'cperl-vc-header-alist
- "use cperl-vc-rcs-header or cperl-vc-sccs-header instead.")
-
 (defcustom cperl-clobber-mode-lists
   (not
    (and
@@ -628,8 +577,7 @@ One should tune up `cperl-close-paren-offset' as well."
   :group 'cperl-indentation-details)
 
 (defcustom cperl-syntaxify-by-font-lock
-  (and cperl-can-font-lock
-       (boundp 'parse-sexp-lookup-properties))
+  (boundp 'parse-sexp-lookup-properties)
   "*Non-nil means that CPerl uses `font-lock's routines for syntaxification."
   :type '(choice (const message) boolean)
   :group 'cperl-speed)
@@ -722,18 +670,6 @@ This way enabling/disabling of menu items is more correct."
 Subdirectory `cperl-mode' may contain yet newer development releases and/or
 patches to related files.
 
-For best results apply to an older Emacs the patches from
-  ftp://ftp.math.ohio-state.edu/pub/users/ilya/cperl-mode/patches
-\(this upgrades syntax-parsing abilities of Emacsen v19.34 and
-v20.2 up to the level of Emacs v20.3 - a must for a good Perl
-mode.)  As of beginning of 2003, XEmacs may provide a similar ability.
-
-Get support packages choose-color.el (or font-lock-extra.el before
-19.30), imenu-go.el from the same place.  \(Look for other files there
-too... ;-).  Get a patch for imenu.el in 19.29.  Note that for 19.30 and
-later you should use choose-color.el *instead* of font-lock-extra.el
-\(and you will not get smart highlighting in C :-().
-
 Note that to enable Compile choices in the menu you need to install
 mode-compile.el.
 
@@ -760,7 +696,7 @@ Run Perl/Tools/Insert-spaces-if-needed to fix your lazy typing.
 
 Switch auto-help on/off with Perl/Tools/Auto-help.
 
-Though with contemporary Emaxen CPerl mode should maintain the correct
+Though with contemporary Emacsen CPerl mode should maintain the correct
 parsing of Perl even when editing, sometimes it may be lost.  Fix this by
 
   \\[normal-mode]
@@ -775,70 +711,16 @@ micro-docs on what I know about CPerl problems.")
 
 (defvar cperl-problems 'please-ignore-this-line
   "Description of problems in CPerl mode.
-Some faces will not be shown on some versions of Emacs unless you
-install choose-color.el, available from
-  http://ilyaz.org/software/emacs
-
 `fill-paragraph' on a comment may leave the point behind the
 paragraph.  It also triggers a bug in some versions of Emacs (CPerl tries
-to detect it and bulk out).
-
-See documentation of a variable `cperl-problems-old-emaxen' for the
-problems which disappear if you upgrade Emacs to a reasonably new
-version (20.3 for Emacs, and those of 2004 for XEmacs).")
-
-(defvar cperl-problems-old-emaxen 'please-ignore-this-line
-  "Description of problems in CPerl mode specific for older Emacs versions.
-
-Emacs had a _very_ restricted syntax parsing engine until version
-20.1.  Most problems below are corrected starting from this version of
-Emacs, and all of them should be fixed in version 20.3.  (Or apply
-patches to Emacs 19.33/34 - see tips.)  XEmacs was very backward in
-this respect (until 2003).
-
-Note that even with newer Emacsen in some very rare cases the details
-of interaction of `font-lock' and syntaxification may be not cleaned
-up yet.  You may get slightly different colors basing on the order of
-fontification and syntaxification.  Say, the initial faces is correct,
-but editing the buffer breaks this.
-
-Even with older Emacsen CPerl mode tries to corrects some Emacs
-misunderstandings, however, for efficiency reasons the degree of
-correction is different for different operations.  The partially
-corrected problems are: POD sections, here-documents, regexps.  The
-operations are: highlighting, indentation, electric keywords, electric
-braces.
-
-This may be confusing, since the regexp s#//#/#\; may be highlighted
-as a comment, but it will be recognized as a regexp by the indentation
-code.  Or the opposite case, when a POD section is highlighted, but
-may break the indentation of the following code (though indentation
-should work if the balance of delimiters is not broken by POD).
-
-The main trick (to make $ a \"backslash\") makes constructions like
-${aaa} look like unbalanced braces.  The only trick I can think of is
-to insert it as $ {aaa} (valid in perl5, not in perl4).
-
-Similar problems arise in regexps, when /(\\s|$)/ should be rewritten
-as /($|\\s)/.  Note that such a transposition is not always possible.
-
-The solution is to upgrade your Emacs or patch an older one.  Note
-that Emacs 20.2 has some bugs related to `syntax-table' text
-properties.  Patches are available on the main CPerl download site,
-and on CPAN.
-
-If these bugs cannot be fixed on your machine (say, you have an inferior
-environment and cannot recompile), you may still disable all the fancy stuff
-via `cperl-use-syntax-table-text-property'.")
+to detect it and bulk out).")
 
 (defvar cperl-praise 'please-ignore-this-line
   "Advantages of CPerl mode.
 
 0) It uses the newest `syntax-table' property ;-);
 
-1) It does 99% of Perl syntax correct (as opposed to 80-90% in Perl
-mode - but the latter number may have improved too in last years) even
-with old Emaxen which do not support `syntax-table' property.
+1) It does 99% of Perl syntax correct.
 
 When using `syntax-table' property for syntax assist hints, it should
 handle 99.995% of lines correct - or somesuch.  It automatically
@@ -919,8 +801,7 @@ the settings present before the switch.
 9) When doing indentation of control constructs, may correct
 line-breaks/spacing between elements of the construct.
 
-10) Uses a linear-time algorith for indentation of regions (on Emaxen with
-capable syntax engines).
+10) Uses a linear-time algorith for indentation of regions.
 
 11) Syntax-highlight, indentation, sexp-recognition inside regular expressions.
 ")
@@ -944,8 +825,8 @@ syntax-parsing routines, and marks them up so that either
 
     A1) CPerl may work around these deficiencies (for big chunks, mostly
         PODs and HERE-documents), or
-    A2) On capable Emaxen CPerl will use improved syntax-handlings
-	which reads mark-up hints directly.
+    A2) CPerl will use improved syntax-handlings which reads mark-up
+        hints directly.
 
     The scan in case A2 is much more comprehensive, thus may be slower.
 
@@ -1052,33 +933,19 @@ In regular expressions (except character classes):
     (if transient-mark-mode mark-active t))
   (defun cperl-mark-active () mark-active))
 
-(defsubst cperl-enable-font-lock ()
-  cperl-can-font-lock)
-
 (defun cperl-putback-char (c)		; Emacs 19
-  (set 'unread-command-events (list c))) ; Avoid undefined warning
+  (setq unread-command-events (list c)))
 
 (if (featurep 'xemacs)
     (defun cperl-putback-char (c)	; XEmacs >= 19.12
       (setq unread-command-events (list (eval '(character-to-event c))))))
-
-(or (fboundp 'uncomment-region)
-    (defun uncomment-region (beg end)
-      (interactive "r")
-      (comment-region beg end -1)))
-
-(defvar cperl-do-not-fontify
-  (if (string< emacs-version "19.30")
-      'fontified
-    'lazy-lock)
-  "Text property which inhibits refontification.")
 
 (defsubst cperl-put-do-not-fontify (from to &optional post)
   ;; If POST, do not do it with postponed fontification
   (if (and post cperl-syntaxify-by-font-lock)
       nil
   (put-text-property (max (point-min) (1- from))
-		       to cperl-do-not-fontify t)))
+		       to 'lazy-lock t)))
 
 (defcustom cperl-mode-hook nil
   "Hook run by CPerl mode."
@@ -1135,9 +1002,6 @@ versions of Emacs."
 	`(ps-extend-face-list ,arg))
     (defmacro cperl-ps-extend-face-list (arg)
       `(error "This version of Emacs has no `ps-extend-face-list'")))
-  ;; Calling `cperl-enable-font-lock' below doesn't compile on XEmacs,
-  ;; macros instead of defsubsts don't work on Emacs, so we do the
-  ;; expansion manually.  Any other suggestions?
   (require 'cl))
 
 (defvar cperl-mode-abbrev-table nil
@@ -1210,26 +1074,18 @@ versions of Emacs."
 		      ;;(concat (char-to-string help-char) "v") ; does not work
 		      'cperl-get-help
 		      [(control c) (control h) v]))
-  (if (and (featurep 'xemacs)
-	   (<= emacs-minor-version 11) (<= emacs-major-version 19))
-      (progn
-	;; substitute-key-definition is usefulness-deenhanced...
-	;;;;;(cperl-define-key "\M-q" 'cperl-fill-paragraph)
-	(cperl-define-key "\e;" 'cperl-indent-for-comment)
-	(cperl-define-key "\e\C-\\" 'cperl-indent-region))
-    (or (boundp 'fill-paragraph-function)
-	(substitute-key-definition
-	 'fill-paragraph 'cperl-fill-paragraph
-	 cperl-mode-map global-map))
-    (substitute-key-definition
-     'indent-sexp 'cperl-indent-exp
-     cperl-mode-map global-map)
-    (substitute-key-definition
-     'indent-region 'cperl-indent-region
-     cperl-mode-map global-map)
-    (substitute-key-definition
-     'indent-for-comment 'cperl-indent-for-comment
-     cperl-mode-map global-map)))
+  (substitute-key-definition
+   'fill-paragraph 'cperl-fill-paragraph
+   cperl-mode-map global-map)
+  (substitute-key-definition
+   'indent-sexp 'cperl-indent-exp
+   cperl-mode-map global-map)
+  (substitute-key-definition
+   'indent-region 'cperl-indent-region
+   cperl-mode-map global-map)
+  (substitute-key-definition
+   'indent-for-comment 'cperl-indent-for-comment
+   cperl-mode-map global-map))
 
 (defvar cperl-menu)
 (defvar cperl-lazy-installed)
@@ -1537,7 +1393,7 @@ the last)."
 (defvar cperl-font-locking nil)
 
 ;; NB as it stands the code in cperl-mode assumes this only has one
-;; element. If Xemacs 19 support were dropped, this could all be simplified.
+;; element. Since Xemacs 19 support has been dropped, this could all be simplified.
 (defvar cperl-compilation-error-regexp-alist
   ;; This look like a paranoiac regexp: could anybody find a better one? (which WORKS).
   '(("^[^\n]* \\(file\\|at\\) \\([^ \t\n]+\\) [^\n]*line \\([0-9]+\\)[\\., \n]"
@@ -1652,7 +1508,7 @@ span the needed amount of lines.
 
 Variables `cperl-pod-here-scan', `cperl-pod-here-fontify',
 `cperl-pod-face', `cperl-pod-head-face' control processing of POD and
-here-docs sections.  With capable Emaxen results of scan are used
+here-docs sections.  With capable Emacsen results of scan are used
 for indentation too, otherwise they are used for highlighting only.
 
 Variables controlling indentation style:
@@ -1778,10 +1634,6 @@ or as help on variables `cperl-tips', `cperl-problems',
   (setq paragraph-separate paragraph-start)
   (make-local-variable 'paragraph-ignore-fill-prefix)
   (setq paragraph-ignore-fill-prefix t)
-  (if (featurep 'xemacs)
-    (progn
-      (make-local-variable 'paren-backwards-message)
-      (set 'paren-backwards-message t)))
   (make-local-variable 'indent-line-function)
   (setq indent-line-function 'cperl-indent-line)
   (make-local-variable 'require-final-newline)
@@ -1826,13 +1678,6 @@ or as help on variables `cperl-tips', `cperl-problems',
   (set 'vc-rcs-header cperl-vc-rcs-header)
   (make-local-variable 'vc-sccs-header)
   (set 'vc-sccs-header cperl-vc-sccs-header)
-  ;; This one is obsolete...
-  (make-local-variable 'vc-header-alist)
-  (with-no-warnings
-   (set 'vc-header-alist (or cperl-vc-header-alist ; Avoid warning
-			     `((SCCS ,(car cperl-vc-sccs-header))
-			       (RCS ,(car cperl-vc-rcs-header)))))
-   )
   (cond ((boundp 'compilation-error-regexp-alist-alist);; xemacs 20.x
 	 (make-local-variable 'compilation-error-regexp-alist-alist)
 	 (set 'compilation-error-regexp-alist-alist
@@ -1842,25 +1687,12 @@ or as help on variables `cperl-tips', `cperl-problems',
              (let ((f 'compilation-build-compilation-error-regexp-alist))
                (funcall f))
            (make-local-variable 'compilation-error-regexp-alist)
-           (push 'cperl compilation-error-regexp-alist)))
-	((boundp 'compilation-error-regexp-alist);; xmeacs 19.x
-	 (make-local-variable 'compilation-error-regexp-alist)
-	 (set 'compilation-error-regexp-alist
-	       (append cperl-compilation-error-regexp-alist
-		       (symbol-value 'compilation-error-regexp-alist)))))
+           (push 'cperl compilation-error-regexp-alist))))
   (make-local-variable 'font-lock-defaults)
   (setq	font-lock-defaults
-	(cond
-	 ((string< emacs-version "19.30")
-	  '(cperl-font-lock-keywords-2 nil nil ((?_ . "w"))))
-	 ((string< emacs-version "19.33") ; Which one to use?
-	  '((cperl-font-lock-keywords
-	     cperl-font-lock-keywords-1
-	     cperl-font-lock-keywords-2) nil nil ((?_ . "w"))))
-	 (t
-	  '((cperl-load-font-lock-keywords
-	     cperl-load-font-lock-keywords-1
-	     cperl-load-font-lock-keywords-2) nil nil ((?_ . "w"))))))
+	'((cperl-load-font-lock-keywords
+           cperl-load-font-lock-keywords-1
+           cperl-load-font-lock-keywords-2) nil nil ((?_ . "w"))))
   (make-local-variable 'cperl-syntax-state)
   (setq cperl-syntax-state nil)		; reset syntaxification cache
   (if cperl-use-syntax-table-text-property
@@ -1868,13 +1700,9 @@ or as help on variables `cperl-tips', `cperl-problems',
 	(make-local-variable 'parse-sexp-lookup-properties)
 	;; Do not introduce variable if not needed, we check it!
 	(set 'parse-sexp-lookup-properties t)
-	;; Fix broken font-lock:
-	(or (boundp 'font-lock-unfontify-region-function)
-	    (set 'font-lock-unfontify-region-function
-		 'font-lock-default-unfontify-region))
-	(unless (featurep 'xemacs)		; Our: just a plug for wrong font-lock
-	  (make-local-variable 'font-lock-unfontify-region-function)
-	  (set 'font-lock-unfontify-region-function ; not present with old Emacs
+        (unless (featurep 'xemacs)		; Our: just a plug for wrong font-lock
+          (make-local-variable 'font-lock-unfontify-region-function)
+          (setq font-lock-unfontify-region-function
 	       'cperl-font-lock-unfontify-region-function))
 	(make-local-variable 'cperl-syntax-done-to)
 	(setq cperl-syntax-done-to nil)	; reset syntaxification cache
@@ -1909,10 +1737,9 @@ or as help on variables `cperl-tips', `cperl-problems',
 	    (eval '(cperl-old-auto-fill-mode arg)) ; Avoid a warning
 	    (and auto-fill-function (memq major-mode '(perl-mode cperl-mode))
 		 (setq auto-fill-function 'cperl-do-auto-fill))))))
-  (if (cperl-enable-font-lock)
-      (if (cperl-val 'cperl-font-lock)
-	  (progn (or cperl-faces-init (cperl-init-faces))
-		 (font-lock-mode 1))))
+  (if (cperl-val 'cperl-font-lock)
+      (progn (or cperl-faces-init (cperl-init-faces))
+             (font-lock-mode 1)))
   (set (make-local-variable 'facemenu-add-face-function)
        'cperl-facemenu-add-face-function) ; XXXX What this guy is for???
   (and (boundp 'msb-menu-cond)
@@ -1926,8 +1753,7 @@ or as help on variables `cperl-tips', `cperl-problems',
   ;; After hooks since fontification will break this
   (if cperl-pod-here-scan
       (or cperl-syntaxify-by-font-lock
-       (progn (or cperl-faces-init (cperl-init-faces-weak))
-	      (cperl-find-pods-heres)))))
+       (cperl-find-pods-heres))))
 
 ;; Fix for perldb - make default reasonable
 (defun cperl-db ()
@@ -5644,17 +5470,6 @@ indentation and initial hashes.  Behaves usually outside of comment."
   (or cperl-faces-init (cperl-init-faces))
   cperl-font-lock-keywords-2)
 
-(defun cperl-init-faces-weak ()
-  ;; Allow `cperl-find-pods-heres' to run.
-  (or (boundp 'font-lock-constant-face)
-      (cperl-force-face font-lock-constant-face
-                        "Face for constant and label names"))
-  (or (boundp 'font-lock-warning-face)
-      (cperl-force-face font-lock-warning-face
-			"Face for things which should stand out"))
-  ;;(setq font-lock-constant-face 'font-lock-constant-face)
-  )
-
 (defun cperl-init-faces ()
   (condition-case errs
       (progn
@@ -5908,41 +5723,34 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	    '("\\[\\(\\^\\)" 1 font-lock-negation-char-face prepend)))
 	  (setq
 	   t-font-lock-keywords-1
-	   (and (fboundp 'turn-on-font-lock) ; Check for newer font-lock
-		;; not yet as of XEmacs 19.12, works with 21.1.11
-		(or
-		 (not (featurep 'xemacs))
-		 (string< "21.1.9" emacs-version)
-		 (and (string< "21.1.10" emacs-version)
-		      (string< emacs-version "21.1.2")))
-		'(
-		  ("\\(\\([@%]\\|\$#\\)[a-zA-Z_:][a-zA-Z0-9_:]*\\)" 1
-		   (if (eq (char-after (match-beginning 2)) ?%)
-		       'cperl-hash-face
-		     'cperl-array-face)
-		   t)			; arrays and hashes
-		  ("\\(\\([$@]+\\)[a-zA-Z_:][a-zA-Z0-9_:]*\\)[ \t]*\\([[{]\\)"
-		   1
-		   (if (= (- (match-end 2) (match-beginning 2)) 1)
-		       (if (eq (char-after (match-beginning 3)) ?{)
-			   'cperl-hash-face
-			 'cperl-array-face) ; arrays and hashes
-		     font-lock-variable-name-face) ; Just to put something
-		   t)
-		  ("\\(@\\|\\$#\\)\\(\\$+\\([a-zA-Z_:][a-zA-Z0-9_:]*\\|[^ \t\n]\\)\\)"
-		   (1 cperl-array-face)
-		   (2 font-lock-variable-name-face))
-		  ("\\(%\\)\\(\\$+\\([a-zA-Z_:][a-zA-Z0-9_:]*\\|[^ \t\n]\\)\\)"
-		   (1 cperl-hash-face)
-		   (2 font-lock-variable-name-face))
-		  ;;("\\([smy]\\|tr\\)\\([^a-z_A-Z0-9]\\)\\(\\([^\n\\]*||\\)\\)\\2")
+	   '(
+             ("\\(\\([@%]\\|\$#\\)[a-zA-Z_:][a-zA-Z0-9_:]*\\)" 1
+              (if (eq (char-after (match-beginning 2)) ?%)
+                  'cperl-hash-face
+                'cperl-array-face)
+              t)			; arrays and hashes
+             ("\\(\\([$@]+\\)[a-zA-Z_:][a-zA-Z0-9_:]*\\)[ \t]*\\([[{]\\)"
+              1
+              (if (= (- (match-end 2) (match-beginning 2)) 1)
+                  (if (eq (char-after (match-beginning 3)) ?{)
+                      'cperl-hash-face
+                    'cperl-array-face) ; arrays and hashes
+                font-lock-variable-name-face) ; Just to put something
+              t)
+             ("\\(@\\|\\$#\\)\\(\\$+\\([a-zA-Z_:][a-zA-Z0-9_:]*\\|[^ \t\n]\\)\\)"
+              (1 cperl-array-face)
+              (2 font-lock-variable-name-face))
+             ("\\(%\\)\\(\\$+\\([a-zA-Z_:][a-zA-Z0-9_:]*\\|[^ \t\n]\\)\\)"
+              (1 cperl-hash-face)
+              (2 font-lock-variable-name-face))
+             ;;("\\([smy]\\|tr\\)\\([^a-z_A-Z0-9]\\)\\(\\([^\n\\]*||\\)\\)\\2")
 		       ;;; Too much noise from \s* @s[ and friends
-		  ;;("\\(\\<\\([msy]\\|tr\\)[ \t]*\\([^ \t\na-zA-Z0-9_]\\)\\|\\(/\\)\\)"
-		  ;;(3 font-lock-function-name-face t t)
-		  ;;(4
-		  ;; (if (cperl-slash-is-regexp)
-		  ;;    font-lock-function-name-face 'default) nil t))
-		  )))
+             ;;("\\(\\<\\([msy]\\|tr\\)[ \t]*\\([^ \t\na-zA-Z0-9_]\\)\\|\\(/\\)\\)"
+             ;;(3 font-lock-function-name-face t t)
+             ;;(4
+             ;; (if (cperl-slash-is-regexp)
+             ;;    font-lock-function-name-face 'default) nil t))
+             ))
 	  (if cperl-highlight-variables-indiscriminately
 	      (setq t-font-lock-keywords-1
 		    (append t-font-lock-keywords-1
@@ -6037,13 +5845,6 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	  ;; Do it the dull way, without choose-color
 	  (defvar cperl-guessed-background nil
 	    "Display characteristics as guessed by cperl.")
-	  ;;	  (or (fboundp 'x-color-defined-p)
-	  ;;	      (defalias 'x-color-defined-p
-	  ;;		(cond ((fboundp 'color-defined-p) 'color-defined-p)
-	  ;;		      ;; XEmacs >= 19.12
-	  ;;		      ((fboundp 'valid-color-name-p) 'valid-color-name-p)
-	  ;;		      ;; XEmacs 19.11
-	  ;;		      (t 'x-valid-color-name-p))))
 	  (cperl-force-face font-lock-constant-face
 			    "Face for constant and label names")
 	  (cperl-force-face font-lock-variable-name-face
@@ -6062,29 +5863,6 @@ indentation and initial hashes.  Behaves usually outside of comment."
 			    "Face for hashes")
 	  (cperl-force-face cperl-array-face
 			    "Face for arrays")
-	  ;;(defvar font-lock-constant-face 'font-lock-constant-face)
-	  ;;(defvar font-lock-variable-name-face 'font-lock-variable-name-face)
-	  ;;(or (boundp 'font-lock-type-face)
-	  ;;    (defconst font-lock-type-face
-	  ;;	'font-lock-type-face
-	  ;;	"Face to use for data types."))
-	  ;;(or (boundp 'cperl-nonoverridable-face)
-	  ;;    (defconst cperl-nonoverridable-face
-	  ;;	'cperl-nonoverridable-face
-	  ;;	"Face to use for data types from another group."))
-	  ;;(if (not (featurep 'xemacs)) nil
-	  ;;  (or (boundp 'font-lock-comment-face)
-	  ;;	(defconst font-lock-comment-face
-	  ;;	  'font-lock-comment-face
-	  ;;	  "Face to use for comments."))
-	  ;;  (or (boundp 'font-lock-keyword-face)
-	  ;;	(defconst font-lock-keyword-face
-	  ;;	  'font-lock-keyword-face
-	  ;;	  "Face to use for keywords."))
-	  ;;  (or (boundp 'font-lock-function-name-face)
-	  ;;	(defconst font-lock-function-name-face
-	  ;;	  'font-lock-function-name-face
-	  ;;	  "Face to use for function names.")))
 	  (if (and
 	       (not (cperl-is-face 'cperl-array-face))
 	       (cperl-is-face 'font-lock-emphasized-face))
@@ -6097,27 +5875,12 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	       (not (cperl-is-face 'cperl-nonoverridable-face))
 	       (cperl-is-face 'font-lock-other-type-face))
 	      (copy-face 'font-lock-other-type-face 'cperl-nonoverridable-face))
-	  ;;(or (boundp 'cperl-hash-face)
-	  ;;    (defconst cperl-hash-face
-	  ;;	'cperl-hash-face
-	  ;;	"Face to use for hashes."))
-	  ;;(or (boundp 'cperl-array-face)
-	  ;;    (defconst cperl-array-face
-	  ;;	'cperl-array-face
-	  ;;	"Face to use for arrays."))
 	  ;; Here we try to guess background
 	  (let ((background
 		 (if (boundp 'font-lock-background-mode)
 		     font-lock-background-mode
 		   'light))
 		(face-list (and (fboundp 'face-list) (face-list))))
-;;;;	    (fset 'cperl-is-face
-;;;;		  (cond ((fboundp 'find-face)
-;;;;			 (symbol-function 'find-face))
-;;;;			(face-list
-;;;;			 (function (lambda (face) (member face face-list))))
-;;;;			(t
-;;;;			 (function (lambda (face) (boundp face))))))
 	    (defvar cperl-guessed-background
 	      (if (and (boundp 'font-lock-display-type)
 		       (eq font-lock-display-type 'grayscale))
@@ -6132,12 +5895,12 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      (cond
 	       ((eq background 'light)
 		(set-face-foreground 'font-lock-type-face
-				     (if (x-color-defined-p "seagreen")
+				     (if (color-defined-p "seagreen")
 					 "seagreen"
 				       "sea green")))
 	       ((eq background 'dark)
 		(set-face-foreground 'font-lock-type-face
-				     (if (x-color-defined-p "os2pink")
+				     (if (color-defined-p "os2pink")
 					 "os2pink"
 				       "pink")))
 	       (t
@@ -6148,48 +5911,14 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	      (cond
 	       ((eq background 'light)
 		(set-face-foreground 'cperl-nonoverridable-face
-				     (if (x-color-defined-p "chartreuse3")
+				     (if (color-defined-p "chartreuse3")
 					 "chartreuse3"
 				       "chartreuse")))
 	       ((eq background 'dark)
 		(set-face-foreground 'cperl-nonoverridable-face
-				     (if (x-color-defined-p "orchid1")
+				     (if (color-defined-p "orchid1")
 					 "orchid1"
 				       "orange")))))
-;;;	    (if (cperl-is-face 'font-lock-other-emphasized-face) nil
-;;;	      (copy-face 'bold-italic 'font-lock-other-emphasized-face)
-;;;	      (cond
-;;;	       ((eq background 'light)
-;;;		(set-face-background 'font-lock-other-emphasized-face
-;;;				     (if (x-color-defined-p "lightyellow2")
-;;;					 "lightyellow2"
-;;;				       (if (x-color-defined-p "lightyellow")
-;;;					   "lightyellow"
-;;;					 "light yellow"))))
-;;;	       ((eq background 'dark)
-;;;		(set-face-background 'font-lock-other-emphasized-face
-;;;				     (if (x-color-defined-p "navy")
-;;;					 "navy"
-;;;				       (if (x-color-defined-p "darkgreen")
-;;;					   "darkgreen"
-;;;					 "dark green"))))
-;;;	       (t (set-face-background 'font-lock-other-emphasized-face "gray90"))))
-;;;	    (if (cperl-is-face 'font-lock-emphasized-face) nil
-;;;	      (copy-face 'bold 'font-lock-emphasized-face)
-;;;	      (cond
-;;;	       ((eq background 'light)
-;;;		(set-face-background 'font-lock-emphasized-face
-;;;				     (if (x-color-defined-p "lightyellow2")
-;;;					 "lightyellow2"
-;;;				       "lightyellow")))
-;;;	       ((eq background 'dark)
-;;;		(set-face-background 'font-lock-emphasized-face
-;;;				     (if (x-color-defined-p "navy")
-;;;					 "navy"
-;;;				       (if (x-color-defined-p "darkgreen")
-;;;					   "darkgreen"
-;;;					 "dark green"))))
-;;;	       (t (set-face-background 'font-lock-emphasized-face "gray90"))))
 	    (if (cperl-is-face 'font-lock-variable-name-face) nil
 	      (copy-face 'italic 'font-lock-variable-name-face))
 	    (if (cperl-is-face 'font-lock-constant-face) nil
@@ -6237,40 +5966,7 @@ Style of printout regulated by the variable `cperl-ps-print-face-properties'."
     (cperl-ps-extend-face-list cperl-ps-print-face-properties)
     (ps-print-buffer-with-faces file)))
 
-;;; (defun cperl-ps-print-init ()
-;;;   "Initialization of `ps-print' components for faces used in CPerl."
-;;;   ;; Guard against old versions
-;;;   (defvar ps-underlined-faces nil)
-;;;   (defvar ps-bold-faces nil)
-;;;   (defvar ps-italic-faces nil)
-;;;   (setq ps-bold-faces
-;;; 	(append '(font-lock-emphasized-face
-;;; 		  cperl-array-face
-;;; 		  font-lock-keyword-face
-;;; 		  font-lock-variable-name-face
-;;; 		  font-lock-constant-face
-;;; 		  font-lock-reference-face
-;;; 		  font-lock-other-emphasized-face
-;;; 		  cperl-hash-face)
-;;; 		ps-bold-faces))
-;;;   (setq ps-italic-faces
-;;; 	(append '(cperl-nonoverridable-face
-;;; 		  font-lock-constant-face
-;;; 		  font-lock-reference-face
-;;; 		  font-lock-other-emphasized-face
-;;; 		  cperl-hash-face)
-;;; 		ps-italic-faces))
-;;;   (setq ps-underlined-faces
-;;; 	(append '(font-lock-emphasized-face
-;;; 		  cperl-array-face
-;;; 		  font-lock-other-emphasized-face
-;;; 		  cperl-hash-face
-;;; 		  cperl-nonoverridable-face font-lock-type-face)
-;;; 		ps-underlined-faces))
-;;;   (cons 'font-lock-type-face ps-underlined-faces))
-
-
-(if (cperl-enable-font-lock) (cperl-windowed-init))
+(cperl-windowed-init)
 
 (defconst cperl-styles-entries
   '(cperl-indent-level cperl-brace-offset cperl-continued-brace-offset
@@ -7162,9 +6858,8 @@ One may build such TAGS files from CPerl mode menu."
 	(if (featurep 'xemacs)		; Not checked
 	    (progn
 	      (or tags-file-name
-		  ;; Does this work in XEmacs?
-	    (call-interactively 'visit-tags-table))
-	(message "Updating list of classes...")
+                  (call-interactively 'visit-tags-table))
+              (message "Updating list of classes...")
 	      (set-buffer (get-file-buffer tags-file-name))
 	      (cperl-tags-hier-fill))
 	  (or tags-table-list
