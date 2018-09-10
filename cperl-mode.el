@@ -1011,7 +1011,7 @@ In regular expressions (except character classes):
 				unrecognized escape sequences
   `cperl-nonoverridable-face'	Modifiers, as gism in m/REx/gism
   `font-lock-type-face'		POSIX classes inside charclasses,
-				escape sequences with arguments (\x \23 \p \N)
+				escape sequences with arguments (\\x \\23 \\p \\N)
 				and others match-a-char escape sequences
   `font-lock-keyword-face'	Capturing parens, and |
   `font-lock-function-name-face' Special symbols: $ ^ . [ ] [^ ] (?{ }) (??{ })
@@ -2189,8 +2189,8 @@ See `cperl-electric-parens'."
 	  (insert (make-string
 		   (prefix-numeric-value arg)
 		   (cdr (assoc last-command-event '((?{ .?})
-						   (?[ . ?])
-						   (?( . ?))
+						   (?\[ . ?\])
+						   (?\( . ?\))
 						   (?< . ?>))))))
 	  (forward-char (- (prefix-numeric-value arg))))
       (self-insert-command (prefix-numeric-value arg)))))
