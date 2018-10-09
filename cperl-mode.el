@@ -5270,6 +5270,7 @@ conditional/loop constructs."
 	  (setq st (point))
 	  (if (or
 	       (setq empty (looking-at "[ \t]*\n"))
+	       (memq (get-text-property (point) 'syntax-type) '(in-pod here-doc))
 	       (and (setq comm (looking-at "[ \t]*#"))
 		    (or (eq (current-indentation) (or old-comm-indent
 						      comment-column))
@@ -5277,7 +5278,6 @@ conditional/loop constructs."
 	    (if (and old-comm-indent
 		       (not empty)
 		     (= (current-indentation) old-comm-indent)
-		       (not (eq (get-text-property (point) 'syntax-type) 'pod))
 		       (not (eq (get-text-property (point) 'syntax-table)
 				cperl-st-cfence)))
 		  (let ((comment-column new-comm-indent))
@@ -5291,9 +5291,6 @@ conditional/loop constructs."
 			(goto-char (cperl-fix-line-spacing end indent-info)))
 		    (if (setq old-comm-indent
 			      (and (cperl-to-comment-or-eol)
-				   (not (memq (get-text-property (point)
-								 'syntax-type)
-					      '(pod here-doc)))
 				   (not (eq (get-text-property (point)
 							       'syntax-table)
 					    cperl-st-cfence))
