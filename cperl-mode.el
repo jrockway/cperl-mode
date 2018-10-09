@@ -7722,6 +7722,7 @@ __DATA__	Ends program source.
 __FILE__	Current (source) filename.
 __LINE__	Current line in current source.
 __PACKAGE__	Current package.
+__SUB__	Current sub.
 ARGV	Default multi-file input filehandle.  <ARGV> is a synonym for <>.
 ARGVOUT	Output filehandle with -i flag.
 BEGIN { ... }	Immediately executed (during compilation) piece of code.
