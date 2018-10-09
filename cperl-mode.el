@@ -4958,8 +4958,13 @@ CHARS is a string that contains good characters to have before us (however,
 	 (progn
 	   (forward-sexp -1)
 	   (not
-	    (looking-at
-	     "\\(map\\|grep\\|say\\|printf?\\|system\\|exec\\|tr\\|s\\)\\>")))))))
+            (and
+             (looking-at
+              "\\(map\\|grep\\|say\\|printf?\\|system\\|exec\\|tr\\|s\\)\\>")
+             (progn
+               (save-excursion
+                 (forward-sexp -1)
+                 (not (looking-at "sub[[:space:]]")))))))))))
 
 
 (defun cperl-indent-exp ()
