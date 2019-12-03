@@ -567,6 +567,14 @@ Older version of this page was called `perl5', newer `perl'."
   :type 'regexp
   :group 'cperl)
 
+(defcustom cperl-indentable-indent t
+  "*Indentation used for quote-like constructs.
+If nil, the value of `cperl-indent-level' will be used, else
+indentation will be relative to the starting column of the separator
+of the construct (on a previous line)"
+  :type 'boolean
+  :group 'cperl-indentation-details)
+
 (defcustom cperl-regexp-indent-step nil
   "*Indentation used when beautifying regexps.
 If nil, the value of `cperl-indent-level' will be used."
@@ -3084,12 +3092,14 @@ and closing parentheses and brackets."
 	  (cond		       ;;; [indentable terminator start-pos is-block]
 	   ((eq 'terminator (elt i 1)) ; Lone terminator of "indentable string"
 	    (goto-char (elt i 2))	; After opening parens
-	    (1- (current-column)))
+	    (if cperl-indentable-indent
+                (1- (current-column))
+              (+ cperl-indent-level (cperl-calculate-indent))))
 	   ((eq 'first-line (elt i 1)); [indentable first-line start-pos]
 	    (goto-char (elt i 2))
 	    (+ (or cperl-regexp-indent-step cperl-indent-level)
 	       -1
-	       (current-column)))
+	       (if cperl-indentable-indent (current-column) (cperl-calculate-indent))))
 	   ((eq 'cont-line (elt i 1)); [indentable cont-line pos prev-pos first-char start-pos]
 	    ;; Indent as the level after closing parens
 	    (goto-char (elt i 2))	; indent line
