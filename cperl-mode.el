@@ -155,7 +155,7 @@
             ;; Probably will not work due to some save-excursion???
             ;; Or save-file-position?
             ;; (message "Did I get to line %s?" (elt ,elt 1))
-            `(goto-line (string-to-int (elt ,elt 1))))
+            `(cperl-goto-line (string-to-int (elt ,elt 1))))
 	;;)
 	(defmacro cperl-etags-goto-tag-location (elt)
 	  `(etags-goto-tag-location ,elt))))
@@ -427,6 +427,7 @@ Affects: `cperl-font-lock', `cperl-electric-lbrace-space',
 (defvar cperl-vc-header-alist nil)
 (make-obsolete-variable
  'cperl-vc-header-alist
+ '(cperl-vc-rcs-header cperl-vc-sccs-header instead)
  "use cperl-vc-rcs-header or cperl-vc-sccs-header instead.")
 
 (defcustom cperl-clobber-mode-lists
@@ -1133,7 +1134,7 @@ versions of Emacs."
 ;;;     (setq interpreter-mode-alist (append interpreter-mode-alist
 ;;;					  '(("miniperl" . perl-mode))))))
 (eval-when-compile
-  (mapc (lambda (p)
+  (mapc #'(lambda (p)
 	  (condition-case nil
 	      (require p)
 	    (error nil)))
@@ -5446,7 +5447,7 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	(t
 	 (or name
 	     (setq name "+++BACK+++"))
-	 (mapc (lambda (elt)
+	 (mapc #'(lambda (elt)
 		 (if (and (listp elt) (listp (cdr elt)))
 		     (progn
 		       ;; In the other order it goes up
@@ -5627,11 +5628,10 @@ indentation and initial hashes.  Behaves usually outside of comment."
 	       (cperl-init-faces))))
 	((not cperl-faces-init)
 	 (add-hook 'font-lock-mode-hook
-		   (function
-		    (lambda ()
-		      (if (memq major-mode '(perl-mode cperl-mode))
-			  (progn
-			    (or cperl-faces-init (cperl-init-faces)))))))
+                   #'(lambda ()
+                       (if (memq major-mode '(perl-mode cperl-mode))
+                           (progn
+                             (or cperl-faces-init (cperl-init-faces))))))
 	 (if (fboundp 'eval-after-load)
 	     (eval-after-load
 		 "ps-print"
@@ -6493,14 +6493,13 @@ data already), may be restored by `cperl-set-style-back'.
 Choosing \"Current\" style will not change style, so this may be used for
 side-effect of memorizing only.  Examples in `cperl-style-examples'."
   (interactive
-   (let ((list (mapcar (function (lambda (elt) (list (car elt))))
+   (let ((list (mapcar #'(lambda (elt) (list (car elt)))
 		       cperl-style-alist)))
      (list (completing-read "Enter style: " list nil 'insist))))
   (or cperl-old-style
       (setq cperl-old-style
-	    (mapcar (function
-		     (lambda (name)
-		       (cons name (eval name))))
+	    (mapcar #'(lambda (name)
+                        (cons name (eval name)))
 		    cperl-styles-entries)))
   (let ((style (cdr (assoc style cperl-style-alist))) setting str sym)
     (while style
@@ -6516,6 +6515,32 @@ side-effect of memorizing only.  Examples in `cperl-style-examples'."
       (setq setting (car cperl-old-style)
 	    cperl-old-style (cdr cperl-old-style))
       (set (car setting) (cdr setting)))))
+
+(defun cperl-add-style (style)
+  "Add a new custom style created by the user to the list of available styles.
+
+The new style will be available to be used with the function `cperl-set-style'.
+New styles can be created this way:
+  (defconst style '((\"my-cool-style\"
+                     (cperl-indent-level . 2)
+                     (cperl-brace-offset . 2)
+                     (cperl-brace-imaginary-offset . 0)
+                     (cperl-label-offset . -2))))
+
+Now calling : (cperl-add-style style) will add the new style.
+You can activate the new style this way : (cperl-set-style \"my-cool-style\""
+  (labels ((validate-style (custom-style)
+                           (when (and (listp style) (listp (car style)) (stringp (car (car style)))
+                                      (listp (cdr (car style))))
+                             (let ((style-def (cdr (car style)))
+                                   (valid t))
+                               (dolist (item style-def)
+                                 (unless (consp item)
+                                   (setf valid nil)
+                                   (return)))
+                               valid))))
+    (when (funcall #'validate-style style)
+      (setf cperl-style-alist (append style cperl-style-alist)))))
 
 (defun cperl-check-syntax ()
   (interactive)
@@ -6937,24 +6962,22 @@ by CPerl."
 	  (setq ind (cperl-imenu--create-perl-index))
 	  (setq lst (cdr (assoc "+Unsorted List+..." ind))))
 	(setq lst
-	      (mapcar
-	       (function
-		(lambda (elt)
-		  (cond ((string-match "^[_a-zA-Z]" (car elt))
-			 (goto-char (cdr elt))
-			 (beginning-of-line) ; pos should be of the start of the line
-			 (list (car elt)
-			       (point)
-			       (1+ (count-lines 1 (point))) ; 1+ since at beg-o-l
-			       (buffer-substring (progn
-						   (goto-char (cdr elt))
-						   ;; After name now...
-						   (or (eolp) (forward-char 1))
-						   (point))
-						 (progn
-						   (beginning-of-line)
-						   (point))))))))
-	       lst))
+	      (mapcar #'(lambda (elt)
+                          (cond ((string-match "^[_a-zA-Z]" (car elt))
+                                 (goto-char (cdr elt))
+                                 (beginning-of-line) ; pos should be of the start of the line
+                                 (list (car elt)
+                                       (point)
+                                       (1+ (count-lines 1 (point))) ; 1+ since at beg-o-l
+                                       (buffer-substring (progn
+                                                           (goto-char (cdr elt))
+                                                           ;; After name now...
+                                                           (or (eolp) (forward-char 1))
+                                                           (point))
+                                                         (progn
+                                                           (beginning-of-line)
+                                                           (point)))))))
+                      lst))
 	(erase-buffer)
 	(while lst
 	  (setq elt (car lst) lst (cdr lst))
@@ -7055,16 +7078,15 @@ Use as
 			(setq cperl-unreadable-ok t
 			      tm nil)	; Return empty list
 		      (error "Aborting: unreadable directory %s" file)))))))
-	  (mapc (function
-		 (lambda (file)
-		   (cond
-		    ((string-match cperl-noscan-files-regexp file)
-		     nil)
-		    ((not (file-directory-p file))
-		     (if (string-match cperl-scan-files-regexp file)
-			 (cperl-write-tags file erase recurse nil t noxs topdir)))
-		    ((not recurse) nil)
-		    (t (cperl-write-tags file erase recurse t t noxs topdir)))))
+	  (mapc #'(lambda (file)
+                    (cond
+                     ((string-match cperl-noscan-files-regexp file)
+                      nil)
+                     ((not (file-directory-p file))
+                      (if (string-match cperl-scan-files-regexp file)
+                          (cperl-write-tags file erase recurse nil t noxs topdir)))
+                     ((not recurse) nil)
+                     (t (cperl-write-tags file erase recurse t t noxs topdir))))
 		files)))
        (t
 	(setq xs (string-match "\\.xs$" file))
@@ -7164,10 +7186,10 @@ One may build such TAGS files from CPerl mode menu."
   (require 'etags)
   (require 'imenu)
   (if (or update (null (nth 2 cperl-hierarchy)))
-      (let ((remover (function (lambda (elt) ; (name (file1...) (file2..))
+      (let ((remover #'(lambda (elt) ; (name (file1...) (file2..))
 				 (or (nthcdr 2 elt)
 				     ;; Only in one file
-				     (setcdr elt (cdr (nth 1 elt)))))))
+				     (setcdr elt (cdr (nth 1 elt))))))
 	    pack name cons1 to l1 l2 l3 l4 b)
 	;; (setq cperl-hierarchy '(() () ())) ; Would write into '() later!
 	(setq cperl-hierarchy (list l1 l2 l3))
@@ -7181,12 +7203,10 @@ One may build such TAGS files from CPerl mode menu."
 	      (cperl-tags-hier-fill))
 	  (or tags-table-list
 	      (call-interactively 'visit-tags-table))
-	  (mapc
-	   (function
-	    (lambda (tagsfile)
+	  (mapc #'(lambda (tagsfile)
 	      (message "Updating list of classes... %s" tagsfile)
 	    (set-buffer (get-file-buffer tagsfile))
-	    (cperl-tags-hier-fill)))
+	    (cperl-tags-hier-fill))
 	   tags-table-list)
 	  (message "Updating list of classes... postprocessing..."))
 	(mapc remover (car cperl-hierarchy))
@@ -7230,9 +7250,7 @@ One may build such TAGS files from CPerl mode menu."
 	 (methods (cdr (nth 2 to)))
 	 l1 head tail cons1 cons2 ord writeto packs recurse
 	 root-packages root-functions ms many_ms same_name ps
-	 (move-deeper
-	  (function
-	   (lambda (elt)
+	 (move-deeper #'(lambda (elt)
 	     (cond ((and (string-match regexp (car elt))
 			 (or (eq ord 1) (match-end 2)))
 		    (setq head (substring (car elt) 0 (match-end 1))
@@ -7250,7 +7268,7 @@ One may build such TAGS files from CPerl mode menu."
 		   ((eq ord 2)
 		    (setq root-functions (cons elt root-functions)))
 		   (t
-		    (setq root-packages (cons elt root-packages))))))))
+		    (setq root-packages (cons elt root-packages)))))))
     (setcdr to l1)			; Init to dynamic space
     (setq writeto to)
     (setq ord 1)
@@ -7258,32 +7276,32 @@ One may build such TAGS files from CPerl mode menu."
     (setq ord 2)
     (mapc move-deeper methods)
     (if recurse
-	(mapc (function (lambda (elt)
-			  (cperl-tags-treeify elt (1+ level))))
+	(mapc #'(lambda (elt)
+			  (cperl-tags-treeify elt (1+ level)))
 	      (cdr to)))
     ;;Now clean up leaders with one child only
-    (mapc (function (lambda (elt)
+    (mapc #'(lambda (elt)
 		      (if (not (and (listp (cdr elt))
 				    (eq (length elt) 2))) nil
 			(setcar elt (car (nth 1 elt)))
-			(setcdr elt (cdr (nth 1 elt))))))
+			(setcdr elt (cdr (nth 1 elt)))))
 	  (cdr to))
     ;; Sort the roots of subtrees
     (if (default-value 'imenu-sort-function)
 	(setcdr to
 		(sort (cdr to) (default-value 'imenu-sort-function))))
     ;; Now add back functions removed from display
-    (mapc (function (lambda (elt)
-		      (setcdr to (cons elt (cdr to)))))
+    (mapc #'(lambda (elt)
+		      (setcdr to (cons elt (cdr to))))
 	  (if (default-value 'imenu-sort-function)
 	      (nreverse
 	       (sort root-functions (default-value 'imenu-sort-function)))
 	    root-functions))
     ;; Now add back packages removed from display
-    (mapc (function (lambda (elt)
+    (mapc #'(lambda (elt)
 		      (setcdr to (cons (cons (concat "package " (car elt))
 					     (cdr elt))
-				       (cdr to)))))
+				       (cdr to))))
 	  (if (default-value 'imenu-sort-function)
 	      (nreverse
 	       (sort root-packages (default-value 'imenu-sort-function)))
@@ -7319,8 +7337,7 @@ One may build such TAGS files from CPerl mode menu."
   (let (list)
     (cons 'keymap
 	  (mapcar
-	   (function
-	    (lambda (elt)
+	    #'(lambda (elt)
 	      (cond ((listp (cdr elt))
 		     (setq list (cperl-list-fold
 				 (cdr elt) (car elt) imenu-max-items))
@@ -7328,7 +7345,7 @@ One may build such TAGS files from CPerl mode menu."
 			   (cons (car elt)
 				 (cperl-menu-to-keymap list))))
 		    (t
-		     (list (cdr elt) (car elt) t))))) ; t is needed in 19.34
+		     (list (cdr elt) (car elt) t)))) ; t is needed in 19.34
 	   (cperl-list-fold menu "Root" imenu-max-items)))))
 
 
@@ -7380,17 +7397,17 @@ Currently it is tuned to C and Perl syntax."
     (setq last-nonmenu-event 13)	; To disable popup
     (goto-char (point-min))
     (map-y-or-n-p "Insert space here? "
-		  (lambda (arg) (insert " "))
+		  #'(lambda (arg) (insert " "))
 		  'cperl-next-bad-style
 		  '("location" "locations" "insert a space into")
-		  '((?\C-r (lambda (arg)
+		  '((?\C-r #'(lambda (arg)
 			     (let ((buffer-quit-function
 				    'exit-recursive-edit))
 			       (message "Exit with Esc Esc")
 			       (recursive-edit)
 			       t))	; Consider acted upon
 			   "edit, exit with Esc Esc")
-		    (?e (lambda (arg)
+		    (?e #'(lambda (arg)
 			  (let ((buffer-quit-function
 				 'exit-recursive-edit))
 			    (message "Exit with Esc Esc")
@@ -8637,13 +8654,12 @@ a result of qr//, this is not a performance hit), t for the rest."
   (let (pp)
     (and (eq (get-text-property beg 'syntax-type) 'string)
 	 (setq beg (next-single-property-change beg 'syntax-type nil limit)))
-    (cperl-map-pods-heres
-     (function (lambda (s e p)
-		 (if (memq (get-text-property s 'REx-interpolated) skip)
-		     t
-		   (setq pp s)
-		   nil)))	; nil stops
-     'REx-interpolated beg limit)
+    (cperl-map-pods-heres #'(lambda (s e p)
+                              (if (memq (get-text-property s 'REx-interpolated) skip)
+                                  t
+                                (setq pp s)
+                                nil))	; nil stops
+                          'REx-interpolated beg limit)
     (if pp (goto-char pp)
       (message "No more interpolated REx"))))
 
@@ -8666,15 +8682,14 @@ If a region is highlighted, restricts to the region."
 		end (max (mark) (point)))
 	(setq beg (point-min)
 	      end (point-max)))
-      (cperl-map-pods-heres (function
-			     (lambda (s e p)
+      (cperl-map-pods-heres #'(lambda (s e p)
 			       (if do-heres
 				   (setq e (save-excursion
 					     (goto-char e)
 					     (forward-line -1)
 					     (point))))
 			       (ispell-region s e)
-			       t))
+			       t)
 			    (if do-heres 'here-doc-group 'in-pod)
 			    beg end))))
 
@@ -8761,11 +8776,11 @@ start with default arguments, then refine the slowdown regions."
   (or l (setq l 1))
   (or step (setq step 500))
   (or lim (setq lim 40))
-  (let* ((timems (function (lambda ()
+  (let* ((timems #'(lambda ()
 			     (let ((tt (current-time)))
-			       (+ (* 1000 (nth 1 tt)) (/ (nth 2 tt) 1000))))))
+			       (+ (* 1000 (nth 1 tt)) (/ (nth 2 tt) 1000)))))
 	 (tt (funcall timems)) (c 0) delta tot)
-    (goto-line l)
+    (cperl-goto-line l)
     (cperl-mode)
     (setq tot (- (- tt (setq tt (funcall timems)))))
     (message "cperl-mode at %s: %s" l tot)
@@ -8973,6 +8988,21 @@ do extra unwind via `cperl-unwind-to-safe'."
     (string-match ":\\s *\\([0-9.]+\\)" v)
     (substring v (match-beginning 1) (match-end 1)))
   "Version of IZ-supported CPerl package this file is based on.")
+
+(defun cperl-goto-line (line &optional buffer-or-name)
+  "Go to the LINE counting from the beginning of the BUFFER.
+
+This purpose of this function is to prevent the use of `goto-line' function
+whithin Lisp code since it is an interactive function."
+  (let ((window (get-buffer-window (current-buffer)))
+        buffer)
+    (when buffer-or-name
+      (setf buffer (get-buffer buffer-or-name))
+      (set-buffer buffer)
+      (set-window-buffer window buffer))
+
+    (goto-char (point-min))
+    (forward-line (1- line))))
 
 (provide 'cperl-mode)
 

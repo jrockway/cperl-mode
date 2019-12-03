@@ -1,0 +1,11 @@
+#+STARTUP: nofold
+* cperl-mode
+**** About
+cperl-mode is a Emacs major mode for editing Perl source files.
+
+**** Activation
+#+BEGIN_SRC emacs-lisp
+  (add-to-list 'load-path "path-to-cperl-repo-clone")
+  (require 'cperl)
+  (defalias 'perl-mode 'cperl-mode)
+#+END_SRC
