@@ -428,7 +428,7 @@ Affects: `cperl-font-lock', `cperl-electric-lbrace-space',
 (make-obsolete-variable
  'cperl-vc-header-alist
  "use cperl-vc-rcs-header or cperl-vc-sccs-header instead."
- "cperl-mode 6.3")
+ "cperl-mode 5.3")
 
 (defcustom cperl-clobber-mode-lists
   (not
