@@ -1,1 +1,12 @@
 cperl-mode
+
+This repository is no longer an official one.
+It only serves as archive for unofficial cperl-mode variants in the past.
+
+Please contribute changes to the `lisp/progmodes/cperl-mode.el` file in the official GNU Emacs repository:
+
+* http://savannah.gnu.org/projects/emacs
+
+You can view a history of its cperl-mode here:
+
+* http://git.savannah.gnu.org/cgit/emacs.git/log/?qt=grep&q=cperl-mode.el
